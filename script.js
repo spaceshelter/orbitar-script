@@ -400,6 +400,12 @@
                   <label><input type="checkbox" data-setting-name="wideContent" ` + (settings.wideContent ? 'checked="1"' : '') + ` /> - сделать контент пошире</label>
               </div>
               <div>
+                  <label><input type="checkbox" data-setting-name="backToTop" ` + (settings.backToTop ? 'checked="1"' : '') + ` /> - показывать кнопку "Наверх"</label>
+              </div>
+              <div>
+                  <label><input type="checkbox" data-setting-name="newCommentsNav" ` + (settings.newCommentsNav ? 'checked="1"' : '') + ` /> - показывать кнопки навигации по новым комментам</label>
+              </div>            
+              <div>
                   <label><input type="checkbox" data-setting-name="addVocativeToComments" ` + (settings.addVocativeToComments ? 'checked="1"' : '') + ` /> - добавлять обращение в комменты</label>
               </div>
               <div>
