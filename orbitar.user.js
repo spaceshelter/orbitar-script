@@ -13,6 +13,8 @@
     let currentLoggedUsername = null;
     let currentLoggedUserId = null;
 
+    const parser = new DOMParser();
+
     const getCookie = function (name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
@@ -98,7 +100,25 @@
         el.classList.add('BO__hidden_post');
         let currentSettings = getSettings();
         el.dataset.originalContent = el.innerHTML;
-        el.innerHTML = currentSettings.hidePostsForGood ? '' : '<span>спрятанный пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
+        let htmlString = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
+        // el.innerHTML = currentSettings.hidePostsForGood ? '' : '<span>спрятанный пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
+        if (currentSettings.hidePostsForGood) {
+            el.innerHTML = '';
+        }
+        else {
+            escapeHTML(el, htmlString);
+        }
+
+    }
+
+    const escapeHTML = function (el, str) {
+        let message = str;
+        const parsed = parser.parseFromString(message, `text/html`);
+        el.innerHTML = "";
+        const tags = parsed.getElementsByTagName(`body`);
+        for (const tag of tags) {
+            el.appendChild(tag);
+        }
     }
 
     let currentPostAuthor = null;
@@ -281,15 +301,19 @@
                     }
                     const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                     if (settings.vocativeLowercase) {
-                        commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                        //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                        let htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                        escapeHTML(commentHtmlContainer, htmlString);
                     }
-                    commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
+                    //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
+                    htmlString = vocativeOpeningTags.join('')
                         + parentCommentAuthor
                         + vocativeClosingTags.join('')
                         + ((settings.vocativeSymbol ? settings.vocativeSymbol : ',') + ' ')
                         + (commentStartsWithMedia ? '<br/>' : '')
                         + commentHtmlContainer.innerHTML;
                     commentHtmlContainer.dataset.vocativeProcessed = '1';
+                    escapeHTML(commentHtmlContainer, htmlString);
                 });
             }
         } else {
@@ -316,15 +340,19 @@
                             }
                             const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                             if (settings.vocativeLowercase) {
-                                commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                                //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                                htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                                escapeHTML(commentHtmlContainer, htmlString);
                             }
-                            commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
+                            //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
+                            htmlString = vocativeOpeningTags.join('')
                                 + parentCommentAuthorUsername
                                 + vocativeClosingTags.join('')
                                 + ((settings.vocativeSymbol ? settings.vocativeSymbol : ',') + ' ')
                                 + (commentStartsWithMedia ? '<br/>' : '')
                                 + commentHtmlContainer.innerHTML;
                             commentHtmlContainer.dataset.vocativeProcessed = '1';
+                            escapeHTML(commentHtmlContainer, htmlString);
 
                         }
                     }
@@ -429,7 +457,8 @@
         if (!settingsShown) {
             const settingsContainer = document.createElement('div');
             settingsContainer.className = 'BO__settings';
-            settingsContainer.innerHTML = `
+            //settingsContainer.innerHTML = `
+            htmlString = `
         <div style="overflow: auto; padding-bottom: 60px;">
         <div class="row">
         <div class="column">
@@ -522,6 +551,7 @@
               </div>
           </div>
         `;
+            escapeHTML(settingsContainer, htmlString);
 
             document.getElementsByTagName('body')[0].appendChild(settingsContainer);
             settingsShown = true;
@@ -589,7 +619,9 @@
             return;
         }
         post.classList.remove('BO__hidden_post');
-        post.innerHTML = post.dataset.originalContent;
+        //post.innerHTML = post.dataset.originalContent;
+        htmlString = post.dataset.originalContent;
+        escapeHTML(post, htmlString);
     });
 
     const layoutChangeCss = (settings.useFont ? `

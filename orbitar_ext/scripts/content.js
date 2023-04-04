@@ -2,6 +2,8 @@
     let currentLoggedUsername = null;
     let currentLoggedUserId = null;
 
+    const parser = new DOMParser();
+
     const getCookie = function (name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
@@ -87,7 +89,24 @@
         el.classList.add('BO__hidden_post');
         let currentSettings = getSettings();
         el.dataset.originalContent = el.innerHTML;
-        el.innerHTML = currentSettings.hidePostsForGood ? '' : '<span>спрятанный пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
+        let htmlString = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
+        if (currentSettings.hidePostsForGood) {
+            el.innerHTML = '';
+        }
+        else {
+            escapeHTML(el, htmlString);
+        }
+
+    }
+
+    const escapeHTML = function (el, str) {
+        let message = str;
+        const parsed = parser.parseFromString(message, `text/html`);
+        el.innerHTML = "";
+        const tags = parsed.getElementsByTagName(`body`);
+        for (const tag of tags) {
+            el.appendChild(tag);
+        }
     }
 
     let currentPostAuthor = null;
@@ -120,8 +139,8 @@
             }
 
             const signaturreLinks = signature.querySelectorAll('a[href*="/p"]');
-            const signatureSiteLink = signature.querySelector('a[href*="/s"]');
-            const signatureAuthorLink = signature.querySelector('a.i-user');
+            const signatureSiteLink = signature.querySelector('a[href*="/s/"]');
+            const signatureAuthorLink = signature.querySelector('a[href*="/u/"]');
             let postSite = null;
             if (signatureSiteLink && signatureSiteLink.innerHTML) {
                 postSite = signatureSiteLink.innerHTML;
@@ -143,29 +162,33 @@
             }
 
             const postAuthor = signature.querySelector('a.i-user').innerText;
-            if (window.location.href.indexOf("/s/") < 0) {
-                if (postId) {
-                    const hidePostEl = document.createElement('span');
-                    hidePostEl.className = 'BO__hide-post';
-                    hidePostEl.innerHTML = '×';
-                    hidePostEl.dataset.postId = postId;
-                    hidePostEl.dataset.postAuthor = postAuthor;
-                    signature.insertAdjacentElement('beforeend', hidePostEl);
-                }
+
+            if (postId) {
+                const hidePostEl = document.createElement('span');
+                hidePostEl.className = 'BO__hide-post';
+                hidePostEl.innerHTML = '×';
+                hidePostEl.title = "скрыть пост";
+                hidePostEl.dataset.postId = postId;
+                hidePostEl.dataset.postAuthor = postAuthor;
+                signature.insertAdjacentElement('beforeend', hidePostEl);
             }
 
-            if (postSite) {
-                const hideSiteEl = document.createElement('span');
-                hideSiteEl.className = 'BO__hide-site';
-                hideSiteEl.innerHTML = '×';
-                hideSiteEl.dataset.postSite = postSite;
-                signatureSiteLink.insertAdjacentElement('afterend', hideSiteEl);
+            if (window.location.href.indexOf("/s/") < 0) {
+                if (postSite) {
+                    const hideSiteEl = document.createElement('span');
+                    hideSiteEl.className = 'BO__hide-site';
+                    hideSiteEl.innerHTML = '×';
+                    hideSiteEl.title = "игнорировать " + postSite;
+                    hideSiteEl.dataset.postSite = postSite;
+                    signatureSiteLink.insertAdjacentElement('afterend', hideSiteEl);
+                }
             }
 
             if (postAuthor) {
                 const hideAuthorEl = document.createElement('span');
                 hideAuthorEl.className = 'BO__hide-username';
                 hideAuthorEl.innerHTML = '×';
+                hideAuthorEl.title = "игнорировать " + postAuthor;
                 hideAuthorEl.dataset.postAuthor = postAuthor;
                 signatureAuthorLink.insertAdjacentElement('afterend', hideAuthorEl);
             }
@@ -196,6 +219,7 @@
                 const hideCAuthorEl = document.createElement('span');
                 hideCAuthorEl.className = 'BO__hide-username';
                 hideCAuthorEl.innerHTML = '×';
+                hideCAuthorEl.title = "игнорировать " + commentAuthor;
                 hideCAuthorEl.dataset.postAuthor = commentAuthor;
                 signatureCAuthorLink.insertAdjacentElement('afterend', hideCAuthorEl);
             }
@@ -265,15 +289,17 @@
                     }
                     const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                     if (settings.vocativeLowercase) {
-                        commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                        let htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                        escapeHTML(commentHtmlContainer, htmlString);
                     }
-                    commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
+                    htmlString = vocativeOpeningTags.join('')
                         + parentCommentAuthor
                         + vocativeClosingTags.join('')
                         + ((settings.vocativeSymbol ? settings.vocativeSymbol : ',') + ' ')
                         + (commentStartsWithMedia ? '<br/>' : '')
                         + commentHtmlContainer.innerHTML;
                     commentHtmlContainer.dataset.vocativeProcessed = '1';
+                    escapeHTML(commentHtmlContainer, htmlString);
                 });
             }
         } else {
@@ -300,15 +326,17 @@
                             }
                             const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                             if (settings.vocativeLowercase) {
-                                commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                                htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                                escapeHTML(commentHtmlContainer, htmlString);
                             }
-                            commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
+                            htmlString = vocativeOpeningTags.join('')
                                 + parentCommentAuthorUsername
                                 + vocativeClosingTags.join('')
                                 + ((settings.vocativeSymbol ? settings.vocativeSymbol : ',') + ' ')
                                 + (commentStartsWithMedia ? '<br/>' : '')
                                 + commentHtmlContainer.innerHTML;
                             commentHtmlContainer.dataset.vocativeProcessed = '1';
+                            escapeHTML(commentHtmlContainer, htmlString);
 
                         }
                     }
@@ -321,6 +349,7 @@
     const config = { attributes: false, childList: true, subtree: true };
     let newComments = 0;
     let previousUrl = '';
+    let lastUrl = '';
     let count = 0;
     const callback = function () {
         doStuff();
@@ -412,7 +441,7 @@
         if (!settingsShown) {
             const settingsContainer = document.createElement('div');
             settingsContainer.className = 'BO__settings';
-            settingsContainer.innerHTML = `
+            htmlString = `
         <div style="overflow: auto; padding-bottom: 60px;">
         <div class="row">
         <div class="column">
@@ -505,6 +534,7 @@
               </div>
           </div>
         `;
+            escapeHTML(settingsContainer, htmlString);
 
             document.getElementsByTagName('body')[0].appendChild(settingsContainer);
             settingsShown = true;
@@ -572,7 +602,8 @@
             return;
         }
         post.classList.remove('BO__hidden_post');
-        post.innerHTML = post.dataset.originalContent;
+        htmlString = post.dataset.originalContent;
+        escapeHTML(post, htmlString);
     });
 
     const layoutChangeCss = (settings.useFont ? `
@@ -881,6 +912,11 @@
         `;
 
     const newCommentsNavCss = `
+        .commentBody{
+            padding: 7px;
+            scroll-margin-top: 80px;
+            border: 1px solid transparent;
+        }
         .prevC {
         width: 40px;
         height: 40px;
@@ -1036,8 +1072,7 @@
             newComments[count + 1].childNodes[0].style.border = "none";
         }
         element.childNodes[0].style.border = "1px solid Gray";
-        element.childNodes[0].style.padding = "7px";
-        element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function onNext(event) {
@@ -1053,17 +1088,17 @@
         var element = newComments[count];
         newComments[count - 1].childNodes[0].style.border = "none";
         element.childNodes[0].style.border = "1px solid Gray";
-        element.childNodes[0].style.padding = "7px";
-        element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function doCommentNav() {
-        count = 0;
+        if (location.href !== lastUrl) {
+            count = 0;
+            lastUrl = location.href;
+        }
 
         if (newComments.length > 0) {
             newComments[0].childNodes[0].style.border = "1px solid Gray";
-            newComments[0].childNodes[0].style.padding = "7px";
-            newComments[0].childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
         if (newComments.length > 1 && settings.newCommentsNav) {
             document.querySelector(".nextC").style.display = "block";
