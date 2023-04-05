@@ -90,7 +90,6 @@
         let currentSettings = getSettings();
         el.dataset.originalContent = el.innerHTML;
         let spantext = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
-        // el.innerHTML = currentSettings.hidePostsForGood ? '' : '<span>спрятанный пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
         if (currentSettings.hidePostsForGood) {
             el.innerHTML = '';
         }
@@ -290,11 +289,9 @@
                     }
                     const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                     if (settings.vocativeLowercase) {
-                        //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                         let htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                         escapeHTML(commentHtmlContainer, htmlString);
                     }
-                    //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
                     htmlString = vocativeOpeningTags.join('')
                         + parentCommentAuthor
                         + vocativeClosingTags.join('')
@@ -329,11 +326,9 @@
                             }
                             const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                             if (settings.vocativeLowercase) {
-                                //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                                 htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                                 escapeHTML(commentHtmlContainer, htmlString);
                             }
-                            //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
                             htmlString = vocativeOpeningTags.join('')
                                 + parentCommentAuthorUsername
                                 + vocativeClosingTags.join('')
@@ -613,7 +608,8 @@
             return;
         }
         post.classList.remove('BO__hidden_post');
-        post.innerHTML = post.dataset.originalContent;
+        htmlString = post.dataset.originalContent;
+        escapeHTML(post, htmlString);
     });
 
     const layoutChangeCss = (settings.useFont ? `
