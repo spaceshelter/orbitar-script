@@ -1119,6 +1119,21 @@
 
     }
 
+    function doc_keyUp(e) {
+        var activeElement = document.activeElement;
+        if (activeElement.type != 'textarea') {
+
+            if (e.code === 'KeyJ') {
+                onNext();
+            }
+
+            if (e.code === 'KeyK') {
+                onPrev();
+            }
+        }
+    }
+
+
     if (settings.newCommentsNav) {
         var prev = document.createElement('div');
         prev.className = 'prevC';
@@ -1131,5 +1146,7 @@
         next.textContent = '⬇️';
         next.onclick = onNext;
         document.body.appendChild(next);
+
+        document.addEventListener('keyup', doc_keyUp, false);
     }
 })();
