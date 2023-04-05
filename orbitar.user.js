@@ -138,9 +138,9 @@
     }
 
     const doStuff = function () {
-        if (document.hidden) {
+        /*if (document.hidden) {
             return;
-        }
+        }*/
         document.querySelectorAll('[class*="PostComponent_post__"]').forEach((el) => {
             if (el.dataset.boProcessed) {
                 return;
