@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Orbitar temporary tweaks
 // @namespace    http://tampermonkey.net/
-// @version      1.5.1
+// @version      1.4.2
 // @description  Slightly modify orbitar.space UI
-// @author       pazoozoo42 & LazyKarlson
+// @author       pazoozoo42
 // @match        https://*.orbitar.space/*
 // @match        http://*.orbitar.local/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=orbitar.space
@@ -100,13 +100,13 @@
         el.classList.add('BO__hidden_post');
         let currentSettings = getSettings();
         el.dataset.originalContent = el.innerHTML;
-        let htmlString = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
-        el.innerHTML = currentSettings.hidePostsForGood ? '' : '<span>спрятанный пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
+        let spantext = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
+        // el.innerHTML = currentSettings.hidePostsForGood ? '' : '<span>спрятанный пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
         if (currentSettings.hidePostsForGood) {
             el.innerHTML = '';
         }
         else {
-            escapeHTML(el, htmlString);
+            escapeHTML(el, spantext);
         }
 
     }
@@ -301,10 +301,11 @@
                     }
                     const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                     if (settings.vocativeLowercase) {
-                        commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                        //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                         let htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                         escapeHTML(commentHtmlContainer, htmlString);
                     }
+                    //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
                     htmlString = vocativeOpeningTags.join('')
                         + parentCommentAuthor
                         + vocativeClosingTags.join('')
@@ -339,9 +340,11 @@
                             }
                             const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                             if (settings.vocativeLowercase) {
+                                //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                                 htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                                 escapeHTML(commentHtmlContainer, htmlString);
                             }
+                            //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
                             htmlString = vocativeOpeningTags.join('')
                                 + parentCommentAuthorUsername
                                 + vocativeClosingTags.join('')
@@ -458,6 +461,7 @@
         if (!settingsShown) {
             const settingsContainer = document.createElement('div');
             settingsContainer.className = 'BO__settings';
+            //settingsContainer.innerHTML = `
             htmlString = `
         <div style="overflow: auto; padding-bottom: 60px;">
         <div class="row">
@@ -619,8 +623,7 @@
             return;
         }
         post.classList.remove('BO__hidden_post');
-        htmlString = post.dataset.originalContent;
-        escapeHTML(post, htmlString);
+        post.innerHTML = post.dataset.originalContent;
     });
 
     const layoutChangeCss = (settings.useFont ? `
@@ -1077,6 +1080,12 @@
     function onPrev(event) {
         if (count > 0) {
             count--;
+            var element = newComments[count];
+            if (count != newComments.length) {
+                newComments[count + 1].childNodes[0].style.border = "none";
+            }
+            element.childNodes[0].style.border = "1px solid Gray";
+            element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         if (count < newComments.length) {
             document.querySelector(".nextC").style.display = "block";
@@ -1084,17 +1093,15 @@
         if (count == 0) {
             document.querySelector(".prevC").style.display = "none";
         }
-        var element = newComments[count];
-        if (count != newComments.length) {
-            newComments[count + 1].childNodes[0].style.border = "none";
-        }
-        element.childNodes[0].style.border = "1px solid Gray";
-        element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function onNext(event) {
-        if (count >= 0 && count < newComments.length) {
+        if (count >= 0 && count < (newComments.length - 1)) {
             count++;
+            var element = newComments[count];
+            newComments[count - 1].childNodes[0].style.border = "none";
+            element.childNodes[0].style.border = "1px solid Gray";
+            element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         if (count > 0) {
             document.querySelector(".prevC").style.display = "block";
@@ -1102,10 +1109,6 @@
         if (count == newComments.length - 1) {
             document.querySelector(".nextC").style.display = "none";
         }
-        var element = newComments[count];
-        newComments[count - 1].childNodes[0].style.border = "none";
-        element.childNodes[0].style.border = "1px solid Gray";
-        element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function doCommentNav() {
@@ -1133,7 +1136,6 @@
         }
     }
 
-
     if (settings.newCommentsNav) {
         var prev = document.createElement('div');
         prev.className = 'prevC';
@@ -1149,4 +1151,6 @@
 
         document.addEventListener('keyup', doc_keyUp, false);
     }
+
+
 })();
