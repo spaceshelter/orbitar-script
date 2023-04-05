@@ -89,12 +89,13 @@
         el.classList.add('BO__hidden_post');
         let currentSettings = getSettings();
         el.dataset.originalContent = el.innerHTML;
-        let htmlString = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
+        let spantext = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
+        // el.innerHTML = currentSettings.hidePostsForGood ? '' : '<span>спрятанный пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
         if (currentSettings.hidePostsForGood) {
             el.innerHTML = '';
         }
         else {
-            escapeHTML(el, htmlString);
+            escapeHTML(el, spantext);
         }
 
     }
@@ -289,9 +290,11 @@
                     }
                     const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                     if (settings.vocativeLowercase) {
+                        //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                         let htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                         escapeHTML(commentHtmlContainer, htmlString);
                     }
+                    //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
                     htmlString = vocativeOpeningTags.join('')
                         + parentCommentAuthor
                         + vocativeClosingTags.join('')
@@ -326,9 +329,11 @@
                             }
                             const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                             if (settings.vocativeLowercase) {
+                                //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                                 htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                                 escapeHTML(commentHtmlContainer, htmlString);
                             }
+                            //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
                             htmlString = vocativeOpeningTags.join('')
                                 + parentCommentAuthorUsername
                                 + vocativeClosingTags.join('')
@@ -353,7 +358,12 @@
     let count = 0;
     const callback = function () {
         doStuff();
+        if (location.href !== lastUrl) {
+            count = 0;
+            lastUrl = location.href;
+        }
         newComments = document.getElementsByClassName("isNew");
+
         if (settings.newCommentsNav && newComments.length > 1) {
             doCommentNav();
         }
@@ -441,6 +451,7 @@
         if (!settingsShown) {
             const settingsContainer = document.createElement('div');
             settingsContainer.className = 'BO__settings';
+            //settingsContainer.innerHTML = `
             htmlString = `
         <div style="overflow: auto; padding-bottom: 60px;">
         <div class="row">
@@ -602,8 +613,7 @@
             return;
         }
         post.classList.remove('BO__hidden_post');
-        htmlString = post.dataset.originalContent;
-        escapeHTML(post, htmlString);
+        post.innerHTML = post.dataset.originalContent;
     });
 
     const layoutChangeCss = (settings.useFont ? `
@@ -1092,10 +1102,6 @@
     }
 
     function doCommentNav() {
-        if (location.href !== lastUrl) {
-            count = 0;
-            lastUrl = location.href;
-        }
 
         if (newComments.length > 0) {
             newComments[0].childNodes[0].style.border = "1px solid Gray";

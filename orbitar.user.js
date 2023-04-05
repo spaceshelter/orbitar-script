@@ -369,6 +369,10 @@
     let count = 0;
     const callback = function () {
         doStuff();
+        if (location.href !== lastUrl) {
+            count = 0;
+            lastUrl = location.href;
+        }
         newComments = document.getElementsByClassName("isNew");
         if (settings.newCommentsNav && newComments.length > 1) {
             doCommentNav();
@@ -1110,10 +1114,6 @@
     }
 
     function doCommentNav() {
-        if (location.href !== lastUrl) {
-            count = 0;
-            lastUrl = location.href;
-        }
 
         if (newComments.length > 0) {
             newComments[0].childNodes[0].style.border = "1px solid Gray";
