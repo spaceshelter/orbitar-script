@@ -107,8 +107,8 @@
         el.innerHTML = "";
         //const tags = parsed.body;
         //for (const tag of tags) {
-        //el.appendChild(parsed.body.innerHTML);
-        el.innerHTML = parsed.body.innerHTML;
+        el.appendChild(parsed.body.firstChild);
+        //el.innerHTML = parsed.body.innerHTML;
         //}
     }
 
@@ -293,16 +293,16 @@
                     const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                     if (settings.vocativeLowercase) {
                         //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
-                        htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                        htmlString = '<span>' + commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1) + '</span>';
                         escapeHTML(commentHtmlContainer, htmlString);
                     }
                     //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
-                    htmlString = vocativeOpeningTags.join('')
+                    htmlString = '<span>' + vocativeOpeningTags.join('')
                         + parentCommentAuthor
                         + vocativeClosingTags.join('')
                         + ((settings.vocativeSymbol ? settings.vocativeSymbol : ',') + ' ')
                         + (commentStartsWithMedia ? '<br/>' : '')
-                        + commentHtmlContainer.innerHTML;
+                        + commentHtmlContainer.innerHTML + '</span>';
                     commentHtmlContainer.dataset.vocativeProcessed = '1';
                     escapeHTML(commentHtmlContainer, htmlString);
                 });
@@ -332,16 +332,16 @@
                             const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                             if (settings.vocativeLowercase) {
                                 //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
-                                htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                                htmlString = '<span>' + commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1) + '</span>';
                                 escapeHTML(commentHtmlContainer, htmlString);
                             }
                             //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
-                            htmlString = vocativeOpeningTags.join('')
+                            htmlString = '<span>' + vocativeOpeningTags.join('')
                                 + parentCommentAuthorUsername
                                 + vocativeClosingTags.join('')
                                 + ((settings.vocativeSymbol ? settings.vocativeSymbol : ',') + ' ')
                                 + (commentStartsWithMedia ? '<br/>' : '')
-                                + commentHtmlContainer.innerHTML;
+                                + commentHtmlContainer.innerHTML + '</span>';
                             commentHtmlContainer.dataset.vocativeProcessed = '1';
                             escapeHTML(commentHtmlContainer, htmlString);
 
@@ -453,7 +453,7 @@
             const settingsContainer = document.createElement('div');
             settingsContainer.className = 'BO__settings';
             //settingsContainer.innerHTML = `
-            htmlString = `
+            htmlString = `<span>
         <div style="overflow: auto; padding-bottom: 60px;">
         <div class="row">
         <div class="column">
@@ -544,7 +544,7 @@
               <div>
                    <i>для вступления в силу надо перезагрузить страницу после сохранения</i>
               </div>
-          </div>
+          </div></span>
         `;
             escapeHTML(settingsContainer, htmlString);
 
@@ -614,7 +614,7 @@
             return;
         }
         post.classList.remove('BO__hidden_post');
-        htmlString = post.dataset.originalContent;
+        htmlString = '<span>' + post.dataset.originalContent + '</span>';
         //post.innerHTML = post.dataset.originalContent;
         escapeHTML(post, htmlString);
     });
