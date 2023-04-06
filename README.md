@@ -1,21 +1,30 @@
-![](https://orbitar.media/2BZzfMq6df6iyZ75Zf73cRLYFom9llm9ub.png)
-версия 1.5.2
+![](https://orbitar.media/2BZzfMq6df6iyZ75Zf73cRLYFom9llm9ub.png)  
+
+версия 1.5.2  
+
 - добавлена навигация по новым комментам;
 - добавлена кнопка "Наверх";
 - игнор подорбит и юзернеймов стал проще;
 - скрипт работает в фоновых вкладках;
-- немного изменено меню настроек.
+- немного изменено меню настроек.  
 
 
-[Инструкция по установке](https://orbitar.space/s/dev/p3145)
+[Инструкция по установке](https://orbitar.space/s/dev/p3145)  
+
 Для тех, кто не хочет заморачиваться с установкой скрипта через Tampermonkey, появилось расширение для браузера, с тем же функционалом.
-Для браузеров на основе Chromium (Chrome, Opera, Vivaldi и пр) - [Orbitar temporary tweaks](https://chrome.google.com/webstore/detail/orbitar-temporary-tweaks/ehnggcajkllclpaphcdmlglohimahbie?hl=en&authuser=0)
-Для Firefox - ссылка будет после одобрения расширения (уже третий день - Status: Awaiting Review).
-После установки скрипта или расширения страничку с Орбитаром надо обновить.
-![](https://orbitar.media/2DcgfDl8GxoIvUH0wpvPU8jKcobYJREWX4.jpg)
-Скрытие поста работает сразу, игнор - после перезагрузки страницы.
+Для браузеров на основе Chromium (Chrome, Opera, Vivaldi и пр) - [Orbitar temporary tweaks](https://chrome.google.com/webstore/detail/orbitar-temporary-tweaks/ehnggcajkllclpaphcdmlglohimahbie?hl=en&authuser=0)  
 
-Меню настроек вызывается кликом по монстрику в левом нижнем углу (и закрывается так же).
+Для Firefox - ссылка будет после одобрения расширения (уже третий день - Status: Awaiting Review).  
+
+После установки скрипта или расширения страничку с Орбитаром надо обновить.  
+
+![](https://orbitar.media/2DcgfDl8GxoIvUH0wpvPU8jKcobYJREWX4.jpg)  
+
+Скрытие поста работает сразу, игнор - после перезагрузки страницы.  
+
+
+Меню настроек вызывается кликом по монстрику в левом нижнем углу (и закрывается так же).  
+
 ![](https://orbitar.media/2DwPVvA9tjIl5IxafORTmofPw0b51tn3XU.jpg)
 По настройкам.
 В левой колонке текстовые поля для заигноренных юзернеймов, подорбит и скрытых постов. Если надо кого-то разыгнорить - надо удалить соответствующий юзернейм-подорбиту-пост и нажать внизу кнопку "Сохранить и перезагрузить".
