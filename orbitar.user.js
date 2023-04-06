@@ -6,7 +6,7 @@
 // @author       pazoozoo42 & LazyKarlson
 // @match        https://*.orbitar.space/*
 // @match        http://*.orbitar.local/*
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=orbitar.space
+// @icon         https://orbitar.space/favicon.ico
 // @grant        none
 // ==/UserScript==
 (function () {
