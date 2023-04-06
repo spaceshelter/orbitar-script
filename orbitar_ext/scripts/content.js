@@ -1,6 +1,7 @@
 (function () {
     let currentLoggedUsername = null;
     let currentLoggedUserId = null;
+    let htmlString = '';
 
     const parser = new DOMParser();
 
@@ -89,12 +90,13 @@
         el.classList.add('BO__hidden_post');
         let currentSettings = getSettings();
         el.dataset.originalContent = el.innerHTML;
-        let spantext = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
+        htmlString = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
+        // el.innerHTML = currentSettings.hidePostsForGood ? '' : '<span>спрятанный пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
         if (currentSettings.hidePostsForGood) {
             el.innerHTML = '';
         }
         else {
-            escapeHTML(el, spantext);
+            escapeHTML(el, htmlString);
         }
 
     }
@@ -103,10 +105,11 @@
         let message = str;
         const parsed = parser.parseFromString(message, `text/html`);
         el.innerHTML = "";
-        const tags = parsed.getElementsByTagName(`body`);
-        for (const tag of tags) {
-            el.appendChild(tag);
-        }
+        //const tags = parsed.body;
+        //for (const tag of tags) {
+        //el.appendChild(parsed.body.innerHTML);
+        el.innerHTML = parsed.body.innerHTML;
+        //}
     }
 
     let currentPostAuthor = null;
@@ -126,9 +129,9 @@
     }
 
     const doStuff = function () {
-        if (document.hidden) {
+        /*if (document.hidden) {
             return;
-        }
+        }*/
         document.querySelectorAll('[class*="PostComponent_post__"]').forEach((el) => {
             if (el.dataset.boProcessed) {
                 return;
@@ -289,9 +292,11 @@
                     }
                     const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                     if (settings.vocativeLowercase) {
-                        let htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                        //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                        htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                         escapeHTML(commentHtmlContainer, htmlString);
                     }
+                    //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
                     htmlString = vocativeOpeningTags.join('')
                         + parentCommentAuthor
                         + vocativeClosingTags.join('')
@@ -326,9 +331,11 @@
                             }
                             const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                             if (settings.vocativeLowercase) {
+                                //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                                 htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                                 escapeHTML(commentHtmlContainer, htmlString);
                             }
+                            //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
                             htmlString = vocativeOpeningTags.join('')
                                 + parentCommentAuthorUsername
                                 + vocativeClosingTags.join('')
@@ -358,7 +365,6 @@
             lastUrl = location.href;
         }
         newComments = document.getElementsByClassName("isNew");
-
         if (settings.newCommentsNav && newComments.length > 1) {
             doCommentNav();
         }
@@ -609,6 +615,7 @@
         }
         post.classList.remove('BO__hidden_post');
         htmlString = post.dataset.originalContent;
+        //post.innerHTML = post.dataset.originalContent;
         escapeHTML(post, htmlString);
     });
 
@@ -1066,6 +1073,12 @@
     function onPrev(event) {
         if (count > 0) {
             count--;
+            var element = newComments[count];
+            if (count != newComments.length) {
+                newComments[count + 1].childNodes[0].style.border = "none";
+            }
+            element.childNodes[0].style.border = "1px solid Gray";
+            element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         if (count < newComments.length) {
             document.querySelector(".nextC").style.display = "block";
@@ -1073,17 +1086,15 @@
         if (count == 0) {
             document.querySelector(".prevC").style.display = "none";
         }
-        var element = newComments[count];
-        if (count != newComments.length) {
-            newComments[count + 1].childNodes[0].style.border = "none";
-        }
-        element.childNodes[0].style.border = "1px solid Gray";
-        element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function onNext(event) {
-        if (count >= 0 && count < newComments.length) {
+        if (count >= 0 && count < (newComments.length - 1)) {
             count++;
+            var element = newComments[count];
+            newComments[count - 1].childNodes[0].style.border = "none";
+            element.childNodes[0].style.border = "1px solid Gray";
+            element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         if (count > 0) {
             document.querySelector(".prevC").style.display = "block";
@@ -1091,10 +1102,6 @@
         if (count == newComments.length - 1) {
             document.querySelector(".nextC").style.display = "none";
         }
-        var element = newComments[count];
-        newComments[count - 1].childNodes[0].style.border = "none";
-        element.childNodes[0].style.border = "1px solid Gray";
-        element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function doCommentNav() {
@@ -1106,6 +1113,20 @@
             document.querySelector(".nextC").style.display = "block";
         }
 
+    }
+
+    function doc_keyUp(e) {
+        var activeElement = document.activeElement;
+        if (activeElement.type != 'textarea') {
+
+            if (e.code === 'KeyJ') {
+                onNext();
+            }
+
+            if (e.code === 'KeyK') {
+                onPrev();
+            }
+        }
     }
 
     if (settings.newCommentsNav) {
@@ -1120,5 +1141,9 @@
         next.textContent = '⬇️';
         next.onclick = onNext;
         document.body.appendChild(next);
+
+        document.addEventListener('keyup', doc_keyUp, false);
     }
+
+
 })();

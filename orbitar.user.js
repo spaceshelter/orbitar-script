@@ -12,6 +12,7 @@
 (function () {
     let currentLoggedUsername = null;
     let currentLoggedUserId = null;
+    let htmlString = '';
 
     const parser = new DOMParser();
 
@@ -100,13 +101,13 @@
         el.classList.add('BO__hidden_post');
         let currentSettings = getSettings();
         el.dataset.originalContent = el.innerHTML;
-        let spantext = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
+        htmlString = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
         // el.innerHTML = currentSettings.hidePostsForGood ? '' : '<span>спрятанный пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
         if (currentSettings.hidePostsForGood) {
             el.innerHTML = '';
         }
         else {
-            escapeHTML(el, spantext);
+            escapeHTML(el, htmlString);
         }
 
     }
@@ -115,10 +116,11 @@
         let message = str;
         const parsed = parser.parseFromString(message, `text/html`);
         el.innerHTML = "";
-        const tags = parsed.getElementsByTagName(`body`);
-        for (const tag of tags) {
-            el.appendChild(tag);
-        }
+        //const tags = parsed.body;
+        //for (const tag of tags) {
+        //el.appendChild(parsed.body.innerHTML);
+        el.innerHTML = parsed.body.innerHTML;
+        //}
     }
 
     let currentPostAuthor = null;
@@ -302,7 +304,7 @@
                     const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                     if (settings.vocativeLowercase) {
                         //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
-                        let htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                        htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
                         escapeHTML(commentHtmlContainer, htmlString);
                     }
                     //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
@@ -623,7 +625,9 @@
             return;
         }
         post.classList.remove('BO__hidden_post');
-        post.innerHTML = post.dataset.originalContent;
+        htmlString = post.dataset.originalContent;
+        //post.innerHTML = post.dataset.originalContent;
+        escapeHTML(post, htmlString);
     });
 
     const layoutChangeCss = (settings.useFont ? `
