@@ -364,7 +364,7 @@
     }
 
     const targetNode = document.getElementsByTagName('html')[0];
-    const config = { attributes: false, childList: true, subtree: true };
+    const config = {attributes: false, childList: true, subtree: true};
     let newComments = 0;
     let previousUrl = '';
     let lastUrl = '';
@@ -1089,7 +1089,7 @@
                 newComments[count + 1].childNodes[0].style.border = "none";
             }
             element.childNodes[0].style.border = "1px solid Gray";
-            element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+            element.childNodes[0].scrollIntoView({behavior: 'smooth', block: 'start'});
         }
         if (count < newComments.length) {
             document.querySelector(".nextC").style.display = "block";
@@ -1105,7 +1105,7 @@
             var element = newComments[count];
             newComments[count - 1].childNodes[0].style.border = "none";
             element.childNodes[0].style.border = "1px solid Gray";
-            element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+            element.childNodes[0].scrollIntoView({behavior: 'smooth', block: 'start'});
         }
         if (count > 0) {
             document.querySelector(".prevC").style.display = "block";
@@ -1155,6 +1155,30 @@
 
         document.addEventListener('keyup', doc_keyUp, false);
     }
+
+    function getUserData(uprofile) {
+        var xhr = new XMLHttpRequest();
+        xhr.responseType = 'json';
+        var url = 'https://api.orbitar.space/api/v1/user/profile';
+        var profile = new URL(uprofile);
+        xhr.open('POST', url, true);
+        xhr.setRequestHeader('Content-type', 'application/json');
+        xhr.setRequestHeader('x-session-id', getCookie('session'));
+        xhr.onload = function () {
+            var jsonResponse = xhr.response;
+            console.log(jsonResponse);
+        };
+        var data = JSON.stringify({"username": profile.pathname.substr(3)});
+        xhr.send(data);
+    }
+
+    // setTimeout(function () {
+    //     var list = document.getElementsByClassName("i-user");
+    //     console.log(list);
+    //     for (var i = 0; i < list.length; i++) {
+    //         list.item(i).onmouseover = function () {getUserData(this.href)}
+    //     }
+    // }, 5000);
 
 
 })();
