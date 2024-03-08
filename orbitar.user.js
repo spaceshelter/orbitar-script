@@ -1,17 +1,18 @@
 // ==UserScript==
 // @name         Orbitar temporary tweaks
 // @namespace    http://tampermonkey.net/
-// @version      1.4.2
+// @version      1.5.2
 // @description  Slightly modify orbitar.space UI
-// @author       pazoozoo42
+// @author       pazoozoo42 & LazyKarlson
 // @match        https://*.orbitar.space/*
 // @match        http://*.orbitar.local/*
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=orbitar.space
+// @icon         https://orbitar.space/favicon.ico
 // @grant        none
 // ==/UserScript==
 (function () {
     let currentLoggedUsername = null;
     let currentLoggedUserId = null;
+    let htmlString = '';
 
     const parser = new DOMParser();
 
@@ -70,6 +71,7 @@
             addVocativeToComments: false,
             scrollToTop: false,
             newCommentsNav: false,
+            userInfoPopUp: false,
             wideContent: false
         }, currentSettings);
     }
@@ -100,13 +102,13 @@
         el.classList.add('BO__hidden_post');
         let currentSettings = getSettings();
         el.dataset.originalContent = el.innerHTML;
-        let spantext = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
+        htmlString = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
         // el.innerHTML = currentSettings.hidePostsForGood ? '' : '<span>спрятанный пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
         if (currentSettings.hidePostsForGood) {
             el.innerHTML = '';
         }
         else {
-            escapeHTML(el, spantext);
+            escapeHTML(el, htmlString);
         }
 
     }
@@ -115,10 +117,11 @@
         let message = str;
         const parsed = parser.parseFromString(message, `text/html`);
         el.innerHTML = "";
-        const tags = parsed.getElementsByTagName(`body`);
-        for (const tag of tags) {
-            el.appendChild(tag);
-        }
+        //const tags = parsed.body;
+        //for (const tag of tags) {
+        el.appendChild(parsed.body.firstChild);
+        //el.innerHTML = parsed.body.innerHTML;
+        //}
     }
 
     let currentPostAuthor = null;
@@ -138,9 +141,9 @@
     }
 
     const doStuff = function () {
-        if (document.hidden) {
+        /*if (document.hidden) {
             return;
-        }
+        }*/
         document.querySelectorAll('[class*="PostComponent_post__"]').forEach((el) => {
             if (el.dataset.boProcessed) {
                 return;
@@ -302,16 +305,16 @@
                     const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                     if (settings.vocativeLowercase) {
                         //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
-                        let htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                        htmlString = '<span>' + commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1) + '</span>';
                         escapeHTML(commentHtmlContainer, htmlString);
                     }
                     //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
-                    htmlString = vocativeOpeningTags.join('')
+                    htmlString = '<span>' + vocativeOpeningTags.join('')
                         + parentCommentAuthor
                         + vocativeClosingTags.join('')
                         + ((settings.vocativeSymbol ? settings.vocativeSymbol : ',') + ' ')
                         + (commentStartsWithMedia ? '<br/>' : '')
-                        + commentHtmlContainer.innerHTML;
+                        + commentHtmlContainer.innerHTML + '</span>';
                     commentHtmlContainer.dataset.vocativeProcessed = '1';
                     escapeHTML(commentHtmlContainer, htmlString);
                 });
@@ -341,16 +344,16 @@
                             const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
                             if (settings.vocativeLowercase) {
                                 //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
-                                htmlString = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
+                                htmlString = '<span>' + commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1) + '</span>';
                                 escapeHTML(commentHtmlContainer, htmlString);
                             }
                             //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
-                            htmlString = vocativeOpeningTags.join('')
+                            htmlString = '<span>' + vocativeOpeningTags.join('')
                                 + parentCommentAuthorUsername
                                 + vocativeClosingTags.join('')
                                 + ((settings.vocativeSymbol ? settings.vocativeSymbol : ',') + ' ')
                                 + (commentStartsWithMedia ? '<br/>' : '')
-                                + commentHtmlContainer.innerHTML;
+                                + commentHtmlContainer.innerHTML + '</span>';
                             commentHtmlContainer.dataset.vocativeProcessed = '1';
                             escapeHTML(commentHtmlContainer, htmlString);
 
@@ -362,7 +365,7 @@
     }
 
     const targetNode = document.getElementsByTagName('html')[0];
-    const config = { attributes: false, childList: true, subtree: true };
+    const config = {attributes: false, childList: true, subtree: true};
     let newComments = 0;
     let previousUrl = '';
     let lastUrl = '';
@@ -376,6 +379,9 @@
         newComments = document.getElementsByClassName("isNew");
         if (settings.newCommentsNav && newComments.length > 1) {
             doCommentNav();
+        }
+        if (settings.userInfoPopUp) {
+            showUserInfoPopUp();
         }
 
         if (settings.newCommentsNav && newComments.length == 0) {
@@ -440,6 +446,7 @@
             hideCommentsRatings: document.querySelector('[data-setting-name="hideCommentsRatings"]').checked,
             scrollToTop: document.querySelector('[data-setting-name="scrollToTop"]').checked,
             newCommentsNav: document.querySelector('[data-setting-name="newCommentsNav"]').checked,
+            userInfoPopUp: document.querySelector('[data-setting-name="userInfoPopUp"]').checked,
             addVocativeToComments: document.querySelector('[data-setting-name="addVocativeToComments"]').checked,
             vocativeBold: document.querySelector('[data-setting-name="vocativeBold"]').checked,
             vocativeItalic: document.querySelector('[data-setting-name="vocativeItalic"]').checked,
@@ -462,7 +469,7 @@
             const settingsContainer = document.createElement('div');
             settingsContainer.className = 'BO__settings';
             //settingsContainer.innerHTML = `
-            htmlString = `
+            htmlString = `<span>
         <div style="overflow: auto; padding-bottom: 60px;">
         <div class="row">
         <div class="column">
@@ -522,6 +529,9 @@
               <div>
                   <label><input type="checkbox" data-setting-name="newCommentsNav" ` + (settings.newCommentsNav ? 'checked="1"' : '') + ` /> - показывать кнопки навигации по новым комментам</label>
               </div>
+<div>
+                  <label><input type="checkbox" data-setting-name="userInfoPopUp" ` + (settings.userInfoPopUp ? 'checked="1"' : '') + ` /> - показывать подсказку с информацией юзернейма</label>
+              </div>
           </div>
           </div>
           </div>
@@ -553,7 +563,7 @@
               <div>
                    <i>для вступления в силу надо перезагрузить страницу после сохранения</i>
               </div>
-          </div>
+          </div></span>
         `;
             escapeHTML(settingsContainer, htmlString);
 
@@ -623,7 +633,9 @@
             return;
         }
         post.classList.remove('BO__hidden_post');
-        post.innerHTML = post.dataset.originalContent;
+        htmlString = '<span>' + post.dataset.originalContent + '</span>';
+        //post.innerHTML = post.dataset.originalContent;
+        escapeHTML(post, htmlString);
     });
 
     const layoutChangeCss = (settings.useFont ? `
@@ -1085,7 +1097,7 @@
                 newComments[count + 1].childNodes[0].style.border = "none";
             }
             element.childNodes[0].style.border = "1px solid Gray";
-            element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+            element.childNodes[0].scrollIntoView({behavior: 'smooth', block: 'start'});
         }
         if (count < newComments.length) {
             document.querySelector(".nextC").style.display = "block";
@@ -1101,7 +1113,7 @@
             var element = newComments[count];
             newComments[count - 1].childNodes[0].style.border = "none";
             element.childNodes[0].style.border = "1px solid Gray";
-            element.childNodes[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+            element.childNodes[0].scrollIntoView({behavior: 'smooth', block: 'start'});
         }
         if (count > 0) {
             document.querySelector(".prevC").style.display = "block";
@@ -1151,6 +1163,130 @@
 
         document.addEventListener('keyup', doc_keyUp, false);
     }
+
+    async function getUserData(uprofile) {
+        try {
+            const url = 'https://api.orbitar.space/api/v1/user/profile';
+            const profile = new URL(uprofile);
+            const data = JSON.stringify({"username": decodeURI(profile.pathname.slice(3))});
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-type': 'application/json; charset=utf-8',
+                    'x-session-id': getCookie('session') 
+                },
+                body: data
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const jsonResponse = await response.json();            
+            return jsonResponse;
+        } catch (error) {
+            console.error('An error occurred:', error);
+        }
+    }
+
+    function detectColorTheme() {
+        try {
+            const parsedValue = JSON.parse(localStorage.getItem('theme'));
+             return parsedValue.theme;
+        } catch (e) {
+            console.error('Error parsing JSON from local storage:', e);
+        }        
+    }
+    
+    function createPopup(content) {
+        const theme = detectColorTheme();
+        const popup = document.createElement('div');
+
+        popup.innerHTML = `<div>` + content.payload.profile.username + `</div>
+            <div>Пол: ` + convertGender(content.payload.profile.gender) + `</div>
+            <div>Имя: ` + content.payload.profile.name + `</div>            
+            <div>` + invitedBy(content.payload.profile.gender) + content.payload.invitedBy.username + `</div>
+            <div>#` + content.payload.profile.id + `</div>
+            <div>Зарегистрирован ` + formatIsoDateString(content.payload.profile.registered) + `</div>
+            <div>Карма ` + formatWithSign(content.payload.profile.karma) + `</div>
+            <div>От меня в карме ` + formatWithSign(content.payload.profile.vote) + `</div>`;
+
+        popup.style.position = 'absolute';
+        popup.style.padding = '8px';
+        popup.style.border = '1px solid';
+        popup.style.borderRadius = '4px';
+        popup.style.zIndex = '1000';
+        popup.style.display = 'none';
+
+
+        if (theme === 'dark') {
+            popup.style.background = '#333';
+            popup.style.color = '#fff';
+            popup.style.border = '1px solid #555';
+        } else {
+            popup.style.background = '#fff';
+            popup.style.color = '#000';
+            popup.style.border = '1px solid #ddd';
+        }
+
+
+        document.body.appendChild(popup);
+
+        return popup;
+    }
+
+    function formatIsoDateString(isoString) {
+        const date = new Date(isoString);
+        let day = date.getDate().toString().padStart(2, '0');
+        let month = (date.getMonth() + 1).toString().padStart(2, '0');
+        let year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    function formatWithSign(number) {  
+        return (number > 0) ? `+${number}` : number.toString();
+    }
+
+    function invitedBy(genderId) {
+        return (genderId == 2) ? `Приглашена ` : `Приглашён `;
+    }
+
+    function convertGender(genderId) {
+        const genderMap = {
+            1: 'мужчина',
+            2: 'женщина',
+            0: 'не указан'
+        };
+
+        return genderMap[genderId] || 'не указан';
+    }
+    function showPopupOnHover(link, content) {
+        const popup = createPopup(content);
+
+            const rect = link.getBoundingClientRect();
+            popup.style.display = 'block';
+            popup.style.top = `${rect.bottom + window.scrollY}px`;
+            popup.style.left = `${rect.left + window.scrollX}px`;      
+        
+        link.addEventListener('mouseout', function () {
+            popup.style.display = 'none';
+        });
+        link.addEventListener('click', function () {
+            popup.style.display = 'none';
+        });
+    } 
+
+    function showUserInfoPopUp() {
+        var list = document.getElementsByClassName("i-user");        
+        for (var i = 0; i < list.length; i++) {
+            list.item(i).onmouseover = function () {
+                var link = this;
+                getUserData(link.href).then(function (value) {
+                    showPopupOnHover(link, value);
+                });
+            }
+        }
+    } 
 
 
 })();

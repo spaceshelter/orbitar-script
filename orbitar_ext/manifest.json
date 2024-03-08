@@ -3,7 +3,7 @@
     "name": "Orbitar temporary tweaks",
     "description": "Slightly modify orbitar.space UI",
     "author": "pazoozoo42 & LazyKarlson",
-    "version": "1.5.1",
+    "version": "1.5.2",
     "browser_specific_settings": {
         "gecko": {
             "id": "orbitartweaks@orbitar.space"
