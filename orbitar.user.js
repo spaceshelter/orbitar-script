@@ -1207,7 +1207,7 @@
             <div>Имя: ` + content.payload.profile.name + `</div>            
             <div>` + invitedBy(content.payload.profile.gender) + content.payload.invitedBy.username + `</div>
             <div>#` + content.payload.profile.id + `</div>
-            <div>Зарегистрирован ` + formatIsoDateString(content.payload.profile.registered) + `</div>
+            <div>` + registered(content.payload.profile.gender) + formatIsoDateString(content.payload.profile.registered) + `</div>
             <div>Карма ` + formatWithSign(content.payload.profile.karma) + `</div>
             <div>От меня в карме ` + formatWithSign(content.payload.profile.vote) + `</div>`;
 
