@@ -71,6 +71,7 @@
             addVocativeToComments: false,
             scrollToTop: false,
             newCommentsNav: false,
+            userInfoPopUp: false,
             wideContent: false
         }, currentSettings);
     }
@@ -379,6 +380,9 @@
         if (settings.newCommentsNav && newComments.length > 1) {
             doCommentNav();
         }
+        if (settings.userInfoPopUp) {
+            showUserInfoPopUp();
+        }
 
         if (settings.newCommentsNav && newComments.length == 0) {
             document.querySelector(".prevC").style.display = "none";
@@ -442,6 +446,7 @@
             hideCommentsRatings: document.querySelector('[data-setting-name="hideCommentsRatings"]').checked,
             scrollToTop: document.querySelector('[data-setting-name="scrollToTop"]').checked,
             newCommentsNav: document.querySelector('[data-setting-name="newCommentsNav"]').checked,
+            userInfoPopUp: document.querySelector('[data-setting-name="userInfoPopUp"]').checked,
             addVocativeToComments: document.querySelector('[data-setting-name="addVocativeToComments"]').checked,
             vocativeBold: document.querySelector('[data-setting-name="vocativeBold"]').checked,
             vocativeItalic: document.querySelector('[data-setting-name="vocativeItalic"]').checked,
@@ -523,6 +528,9 @@
               </div>
               <div>
                   <label><input type="checkbox" data-setting-name="newCommentsNav" ` + (settings.newCommentsNav ? 'checked="1"' : '') + ` /> - показывать кнопки навигации по новым комментам</label>
+              </div>
+<div>
+                  <label><input type="checkbox" data-setting-name="userInfoPopUp" ` + (settings.userInfoPopUp ? 'checked="1"' : '') + ` /> - показывать подсказку с информацией юзернейма</label>
               </div>
           </div>
           </div>
@@ -1156,29 +1164,129 @@
         document.addEventListener('keyup', doc_keyUp, false);
     }
 
-    function getUserData(uprofile) {
-        var xhr = new XMLHttpRequest();
-        xhr.responseType = 'json';
-        var url = 'https://api.orbitar.space/api/v1/user/profile';
-        var profile = new URL(uprofile);
-        xhr.open('POST', url, true);
-        xhr.setRequestHeader('Content-type', 'application/json');
-        xhr.setRequestHeader('x-session-id', getCookie('session'));
-        xhr.onload = function () {
-            var jsonResponse = xhr.response;
-            console.log(jsonResponse);
-        };
-        var data = JSON.stringify({"username": profile.pathname.substr(3)});
-        xhr.send(data);
+    async function getUserData(uprofile) {
+        try {
+            const url = 'https://api.orbitar.space/api/v1/user/profile';
+            const profile = new URL(uprofile);
+            const data = JSON.stringify({"username": decodeURI(profile.pathname.slice(3))});
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-type': 'application/json; charset=utf-8',
+                    'x-session-id': getCookie('session') 
+                },
+                body: data
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const jsonResponse = await response.json();            
+            return jsonResponse;
+        } catch (error) {
+            console.error('An error occurred:', error);
+        }
     }
 
-    // setTimeout(function () {
-    //     var list = document.getElementsByClassName("i-user");
-    //     console.log(list);
-    //     for (var i = 0; i < list.length; i++) {
-    //         list.item(i).onmouseover = function () {getUserData(this.href)}
-    //     }
-    // }, 5000);
+    function detectColorTheme() {
+        try {
+            const parsedValue = JSON.parse(localStorage.getItem('theme'));
+             return parsedValue.theme;
+        } catch (e) {
+            console.error('Error parsing JSON from local storage:', e);
+        }        
+    }
+    
+    function createPopup(content) {
+        const theme = detectColorTheme();
+        const popup = document.createElement('div');
+
+        popup.innerHTML = `<div>` + content.payload.profile.username + `</div>
+            <div>Пол: ` + convertGender(content.payload.profile.gender) + `</div>
+            <div>Имя: ` + content.payload.profile.name + `</div>            
+            <div>` + invitedBy(content.payload.profile.gender) + content.payload.invitedBy.username + `</div>
+            <div>#` + content.payload.profile.id + `</div>
+            <div>Зарегистрирован ` + formatIsoDateString(content.payload.profile.registered) + `</div>
+            <div>Карма ` + formatWithSign(content.payload.profile.karma) + `</div>
+            <div>От меня в карме ` + formatWithSign(content.payload.profile.vote) + `</div>`;
+
+        popup.style.position = 'absolute';
+        popup.style.padding = '8px';
+        popup.style.border = '1px solid';
+        popup.style.borderRadius = '4px';
+        popup.style.zIndex = '1000';
+        popup.style.display = 'none';
+
+
+        if (theme === 'dark') {
+            popup.style.background = '#333';
+            popup.style.color = '#fff';
+            popup.style.border = '1px solid #555';
+        } else {
+            popup.style.background = '#fff';
+            popup.style.color = '#000';
+            popup.style.border = '1px solid #ddd';
+        }
+
+
+        document.body.appendChild(popup);
+
+        return popup;
+    }
+
+    function formatIsoDateString(isoString) {
+        const date = new Date(isoString);
+        let day = date.getDate().toString().padStart(2, '0');
+        let month = (date.getMonth() + 1).toString().padStart(2, '0');
+        let year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    function formatWithSign(number) {  
+        return (number > 0) ? `+${number}` : number.toString();
+    }
+
+    function invitedBy(genderId) {
+        return (genderId == 2) ? `Приглашена ` : `Приглашён `;
+    }
+
+    function convertGender(genderId) {
+        const genderMap = {
+            1: 'мужчина',
+            2: 'женщина',
+            0: 'не указан'
+        };
+
+        return genderMap[genderId] || 'не указан';
+    }
+    function showPopupOnHover(link, content) {
+        const popup = createPopup(content);
+
+            const rect = link.getBoundingClientRect();
+            popup.style.display = 'block';
+            popup.style.top = `${rect.bottom + window.scrollY}px`;
+            popup.style.left = `${rect.left + window.scrollX}px`;      
+        
+        link.addEventListener('mouseout', function () {
+            popup.style.display = 'none';
+        });
+        link.addEventListener('click', function () {
+            popup.style.display = 'none';
+        });
+    } 
+
+    function showUserInfoPopUp() {
+        var list = document.getElementsByClassName("i-user");        
+        for (var i = 0; i < list.length; i++) {
+            list.item(i).onmouseover = function () {
+                var link = this;
+                getUserData(link.href).then(function (value) {
+                    showPopupOnHover(link, value);
+                });
+            }
+        }
+    } 
 
 
 })();
