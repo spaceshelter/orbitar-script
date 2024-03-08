@@ -1274,7 +1274,7 @@ function registered (genderId) {
         link.addEventListener('mouseout', function () {
             popup.style.display = 'none';
         });
-        link.addEventListener('click', function () {
+        addEventListener('click', function () {
             popup.style.display = 'none';
         });
     } 
