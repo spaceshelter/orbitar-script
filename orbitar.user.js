@@ -1278,18 +1278,28 @@ function registered (genderId) {
             popup.style.display = 'none';
         });
     } 
-
+   
     function showUserInfoPopUp() {
-        var list = document.getElementsByClassName("i-user");        
-        for (var i = 0; i < list.length; i++) {
-            list.item(i).onmouseover = function () {
-                var link = this;
-                getUserData(link.href).then(function (value) {
-                    showPopupOnHover(link, value);
-                });
-            }
-        }
-    } 
+        var list = document.getElementsByClassName("i-user");
+        for (var i = 0; i < list.length; i++) {           
+            (function (item) {
+                var hoverTimeout;
+                item.onmouseover = function () {
+                    var link = this;                   
+                    clearTimeout(hoverTimeout);                    
+                    hoverTimeout = setTimeout(function () {
+                        getUserData(link.href).then(function (value) {
+                            showPopupOnHover(link, value);
+                        });
+                    }, 500); 
+                };
 
+                item.onmouseout = function () {
+                    
+                    clearTimeout(hoverTimeout);
+                };
+            })(list.item(i));
+        }
+    }
 
 })();
