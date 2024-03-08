@@ -1251,6 +1251,9 @@
         return (genderId == 2) ? `Приглашена ` : `Приглашён `;
     }
 
+function registered (genderId) {
+    return (genderId == 2) ? `Зарегистрирована ` : `Зарегистрирован `;}
+
     function convertGender(genderId) {
         const genderMap = {
             1: 'мужчина',
