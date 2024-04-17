@@ -246,6 +246,11 @@
                 let currentPost = document.querySelector('[class*=PostComponent_post__] [class*="SignatureComponent_signature__"] a');
                 if (currentPost) {
                     let currentPostAuthor = currentPost.textContent || currentPost.innerText;
+
+                    if (settings.markPostAuthor){
+                        markPostAuthor(currentPostAuthor);
+                    }
+                   
                     document.querySelectorAll('[class*="CommentComponent_comment__"]').forEach((el) => {
                         let commentAuthorContainer = el.querySelector('[class*=SignatureComponent_signature__] a');
                         let commentAuthor = commentAuthorContainer.textContent || commentAuthorContainer.innerText;
@@ -447,6 +452,7 @@
             scrollToTop: document.querySelector('[data-setting-name="scrollToTop"]').checked,
             newCommentsNav: document.querySelector('[data-setting-name="newCommentsNav"]').checked,
             userInfoPopUp: document.querySelector('[data-setting-name="userInfoPopUp"]').checked,
+            markPostAuthor: document.querySelector('[data-setting-name="markPostAuthor"]').checked,
             addVocativeToComments: document.querySelector('[data-setting-name="addVocativeToComments"]').checked,
             vocativeBold: document.querySelector('[data-setting-name="vocativeBold"]').checked,
             vocativeItalic: document.querySelector('[data-setting-name="vocativeItalic"]').checked,
@@ -529,8 +535,11 @@
               <div>
                   <label><input type="checkbox" data-setting-name="newCommentsNav" ` + (settings.newCommentsNav ? 'checked="1"' : '') + ` /> - показывать кнопки навигации по новым комментам</label>
               </div>
-<div>
+              <div>
                   <label><input type="checkbox" data-setting-name="userInfoPopUp" ` + (settings.userInfoPopUp ? 'checked="1"' : '') + ` /> - показывать подсказку с информацией юзернейма</label>
+              </div>
+                <div>
+                  <label><input type="checkbox" data-setting-name="markPostAuthor" ` + (settings.markPostAuthor ? 'checked="1"' : '') + ` /> - выделять юзернейм автора поста в комментах</label>
               </div>
           </div>
           </div>
@@ -654,6 +663,7 @@
       .i-user:before {
           content: '';
       }
+
       [class*="PostComponent_post__"] [class*="PostComponent_controls__"] {
           display: flex;
           flex-direction: row-reverse;
@@ -949,6 +959,7 @@
             scroll-margin-top: 80px;
             border: 1px solid transparent;
         }
+
         .prevC {
         width: 40px;
         height: 40px;
@@ -1004,6 +1015,12 @@
             }
         `;
 
+    const postAuthorCss = `        
+        .author-comment {
+        font-weight: bold !important;
+        }        
+        `;
+
 
 
     const css = hiddenCss + '\n' + settingsCss + '\n' +
@@ -1011,7 +1028,8 @@
         (settings.wideContent ? wideContentCss : '') + '\n' +
         (settings.addVocativeToComments ? vocativesCss : '') + '\n' +
         (settings.scrollToTop ? scrollToTopCss : '') + '\n' +
-        (settings.newCommentsNav ? newCommentsNavCss : '') + '\n';
+        (settings.newCommentsNav ? newCommentsNavCss : '') + '\n' +
+        (settings.markPostAuthor ? postAuthorCss : '') + '\n';
 
 
     const head = document.head || document.getElementsByTagName('head')[0];
@@ -1301,5 +1319,17 @@ function registered (genderId) {
             })(list.item(i));
         }
     }
+
+    function markPostAuthor(postAuthorUsername) {       
+        var comments = document.getElementsByClassName('i-user');
+        for (var i = 0; i < comments.length; i++) {
+            var comment = comments[i];            
+            var commentAuthorUsername = comment.textContent.trim();
+            if (commentAuthorUsername === postAuthorUsername) {                
+                comment.classList.add('author-comment');
+            }
+        }
+    }
+    
 
 })();
