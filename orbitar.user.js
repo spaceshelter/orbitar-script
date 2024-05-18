@@ -1050,7 +1050,7 @@
     var timeoutID;
 
     function scrollToTop() {
-        var scrolled = window.pageYOffset || document.documentElement.scrollTop;
+        var scrolled = window.scrollY || document.documentElement.scrollTop;
         var ch = document.documentElement.clientHeight;
         if (scrolled === 0) {
             clearTimeout(timeoutID);
@@ -1076,7 +1076,7 @@
     }
 
     function toggleScrollToTop() {
-        var scrolled = window.pageYOffset || document.documentElement.scrollTop;
+        var scrolled = window.scrollY || document.documentElement.scrollTop;
         var ch = document.documentElement.clientHeight;
         var elm = document.querySelector('.scrollToTop');
         if (scrolled > ch / 1.1) {
