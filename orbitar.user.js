@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Orbitar temporary tweaks
 // @namespace    http://tampermonkey.net/
-// @version      1.5.3
+// @version      1.5.4
 // @description  Slightly modify orbitar.space UI
 // @author       pazoozoo42 & LazyKarlson
 // @match        https://*.orbitar.space/*
@@ -460,6 +460,8 @@
             hideCommentsRatings: document.querySelector('[data-setting-name="hideCommentsRatings"]').checked,
             scrollToTop: document.querySelector('[data-setting-name="scrollToTop"]').checked,
             newCommentsNav: document.querySelector('[data-setting-name="newCommentsNav"]').checked,
+            newCommentsNavPosition: document.querySelector('[data-setting-name="newCommentsNavPosition"]').value,
+            newCommentsNavPositionSide: document.querySelector('[data-setting-name="newCommentsNavPositionSide"]').value,
             userInfoPopUp: document.querySelector('[data-setting-name="userInfoPopUp"]').checked,
             markPostAuthor: document.querySelector('[data-setting-name="markPostAuthor"]').checked,
             addVocativeToComments: document.querySelector('[data-setting-name="addVocativeToComments"]').checked,
@@ -543,6 +545,8 @@
               </div>
               <div>
                   <label><input type="checkbox" data-setting-name="newCommentsNav" ` + (settings.newCommentsNav ? 'checked="1"' : '') + ` /> - показывать кнопки навигации по новым комментам</label>
+                  <label><input type="text" maxlength="4" size="4" data-setting-name="newCommentsNavPosition" value="` + (settings.newCommentsNavPosition ? settings.newCommentsNavPosition : 100) + `" />px - позиция кнопок навигации по новым комментам<br /></label>
+<label>Кнопки навигации по новым комментам<select name="newCommentsNavPositionSide" data-setting-name="newCommentsNavPositionSide"><option value="right" ` + (settings.newCommentsNavPositionSide === 'right' ? 'selected' : '') + ` >справа</option><option value="left" ` + (settings.newCommentsNavPositionSide === 'left' ? 'selected' : '') + `>слева</option></select></label>
               </div>
               <div>
                   <label><input type="checkbox" data-setting-name="userInfoPopUp" ` + (settings.userInfoPopUp ? 'checked="1"' : '') + ` /> - показывать подсказку с информацией юзернейма</label>
@@ -1023,11 +1027,11 @@
         color: DimGray;
         text-decoration: none;
         position: fixed;
-        bottom: 150px;
-        right: 0;
+        bottom: ` + (parseInt(settings.newCommentsNavPosition) + 50) + `px; 
+        ` + (settings.newCommentsNavPositionSide === 'right' ? 'right: 0;' : 'left: 0;')+ `
+        border-top-` + (settings.newCommentsNavPositionSide === 'right' ? 'left' : 'right') + `-radius: 8px;
         display: none;
-        border: 1px solid grey;
-        border-top-left-radius: 8px;
+        border: 1px solid grey;        
         box-shadow: 0 0 3px grey;
         transition: opacity 250ms ease-out;
         opacity: .5;
@@ -1050,11 +1054,11 @@
             color: DimGray;
             text-decoration: none;
             position: fixed;
-            bottom: 100px;
-            right: 0;
+            bottom: ` + settings.newCommentsNavPosition + `px;
+            ` + (settings.newCommentsNavPositionSide === 'right' ? 'right: 0;' : 'left: 0;') + `
+            border-bottom-` + (settings.newCommentsNavPositionSide === 'right' ? 'left' : 'right') + `-radius: 8px;
             display: none;
-            border: 1px solid grey;
-            border-bottom-left-radius: 8px;
+            border: 1px solid grey;            
             box-shadow: 0 0 3px grey;
             transition: opacity 250ms ease-out;
             opacity: .5;
@@ -1383,82 +1387,48 @@ function registered (genderId) {
         }
     }
 
+    const getHidingComments = function () {
+        let currentSettings = getSettings();
+        if (!currentSettings.hideComments) {
+            return [];
+        }
+        if (currentSettings.hideComments.length === 1 && currentSettings.hideComments[0] === '') {
+            return [];
+        }
+        return currentSettings.hideComments;
+    }
+
     const processComment = function (commentBlock, post) {
-        // Find the header, figure, footer, and content within this comment block
+        
         var header = commentBlock.querySelector('[class*="SignatureComponent_signature__"]');        
         var footer = commentBlock.querySelector('[class*="CommentComponent_controls__"]');
         var content = commentBlock.querySelector('[class*="CommentComponent_answers__"]');
         var commentId = commentBlock.parentElement.getAttribute("data-comment-id");
 
-        //var menu = footer.querySelector("menu");
-
-        // Create the collapse/expand button
-       /* var button = document.createElement("button");
-        button.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
-        button.style.cursor = "pointer";
-        button.style.marginLeft = "1rem";
-        //console.log(footer);
-        // Add the button to the header
-        footer.appendChild(button);
-
-        // Set a click event for the collapse/expand button
-        button.addEventListener("click", function () {
-            if (content.style.display === "none") {
-                content.style.display = "";
-                footer.style.display = "";                
-                commentBlock.style.height = "";
-                button.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
-                // Find all following comment blocks
-                var followingComments = commentBlock.nextElementSibling;
-                while (
-                    followingComments &&
-                    followingComments.className.match(/CommentComponent_answers__[a-zA-Z0-9]{5}/)
-                ) {
-                    followingComments.style.display = "";
-                    collapseChildrenLink.innerHTML = "скрыть ответы";
-                    followingComments = followingComments.nextElementSibling;
-                }
-            } else {
-                content.style.display = "none";
-                footer.style.display = "none";
-                commentBlock.style.height = "40px";
-                commentBlock.style.paddingTop = "0.53rem";
-                button.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
-
-                // Find all following comment blocks
-                var followingComments = commentBlock.nextElementSibling;
-                while (
-                    followingComments &&
-                    followingComments.className.match(/CommentComponent_answers__[a-zA-Z0-9]{5}/)
-                ) {
-                    followingComments.style.display = "none";
-                    collapseChildrenLink.innerHTML = "показать ответы";
-                    followingComments = followingComments.nextElementSibling;
-                }
-            }
-        });   */
-        // Check if this comment has any children
-        var nextComment = commentBlock.nextElementSibling;        
+        var nextComment = commentBlock.nextElementSibling; 
+        
+               
         if (
             nextComment &&
             nextComment.className.match(/CommentComponent_answers__[a-zA-Z0-9]{5}/)
         ) {
-            // Create the collapse children button
+            
             var collapseChildrenButton = document.createElement("a");
             var collapseChildrenLink = document.createElement("button");
             collapseChildrenLink.class = "stretched-link";
             collapseChildrenLink.innerHTML = "скрыть ответы";
             collapseChildrenLink.style.cursor = "pointer";
             collapseChildrenButton.appendChild(collapseChildrenLink);
-
-            // Add the button to the menu in the footer
+            
             footer.appendChild(collapseChildrenButton);
-
-            // Set a click event for the collapse children button
+            let hideComments = getHidingComments();
+            var followingComments = commentBlock.nextElementSibling;
+            if (commentId && hideComments.includes(commentId)) {
+                 followingComments.style.display = "none";
+                        collapseChildrenLink.innerHTML = "показать ответы";
+            }
             collapseChildrenLink.addEventListener("click", function () {
-                // Find all following comment blocks
-                var followingComments = commentBlock.nextElementSibling;
-                console.log(post);
+                followingComments = commentBlock.nextElementSibling;
                 while (
                     followingComments &&
                     followingComments.className.match(/CommentComponent_answers__[a-zA-Z0-9]{5}/)
@@ -1466,9 +1436,25 @@ function registered (genderId) {
                     if (followingComments.style.display === "none") {
                         followingComments.style.display = "";
                         collapseChildrenLink.innerHTML = "скрыть ответы";
+
+                        let hideComments = getHidingComments();
+                       
+                        if (commentId && hideComments.includes(commentId)) {
+                            hideComments.splice(hideComments.indexOf(commentId), 1);
+                            settings.hideComments = hideComments;
+                            localStorage.setItem('BO__SETTINGS', JSON.stringify(settings));
+                        }
                     } else {
                         followingComments.style.display = "none";
                         collapseChildrenLink.innerHTML = "показать ответы";
+
+                        let hideComments = getHidingComments();
+                       
+                        if (commentId && !hideComments.includes(commentId)) {
+                            hideComments.push(commentId);
+                            settings.hideComments = hideComments;
+                            localStorage.setItem('BO__SETTINGS', JSON.stringify(settings));
+                        }
                     }
                     followingComments = followingComments.nextElementSibling;
                 }
