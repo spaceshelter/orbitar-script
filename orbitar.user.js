@@ -227,6 +227,16 @@
                 return;
             }
 
+            const commentBody = el.querySelector('div.commentBody');
+            let postId = null;            
+            if (document.location.href) {
+                let result = document.location.href.match(/\/(p[0-9]+)/);
+                    if (result && result.length >= 2) {
+                        postId = result[1];
+                    }
+                }            
+            processComment(commentBody, postId);
+
             const signatureCAuthorLink = commentSignature.querySelector('a.i-user');
             const commentAuthor = commentSignature.querySelector('a.i-user').innerText;
 
@@ -249,8 +259,7 @@
 
                     if (settings.markPostAuthor){
                         markPostAuthor(currentPostAuthor);
-                    }
-                   
+                    }                   
                     document.querySelectorAll('[class*="CommentComponent_comment__"]').forEach((el) => {
                         let commentAuthorContainer = el.querySelector('[class*=SignatureComponent_signature__] a');
                         let commentAuthor = commentAuthorContainer.textContent || commentAuthorContainer.innerText;
@@ -281,7 +290,7 @@
                         }
                     });
                 }
-            }
+            }            
 
             if (settings.addVocativeToComments) {
                 document.querySelectorAll('[class*=CommentComponent_answers__] > [class*=CommentComponent_comment__]').forEach(function (el) {
@@ -376,7 +385,7 @@
     let lastUrl = '';
     let count = 0;
     const callback = function () {
-        doStuff();
+        doStuff();        
         if (location.href !== lastUrl) {
             count = 0;
             lastUrl = location.href;
@@ -409,7 +418,7 @@
         }
     };
     const observer = new MutationObserver(callback);
-    observer.observe(targetNode, config);
+    observer.observe(targetNode, config);     
 
     doStuff();
 
@@ -567,7 +576,10 @@
         </div>
           <div style="position: absolute; bottom: 10px;">
               <div>
-                  <button class="save" data-reload="1">сохранить и перезагрузить страницу</button>
+                <button class="save" data-reload="1">сохранить и перезагрузить страницу</button>
+                <button class="export">Экспорт настроек</button>
+                <button onclick="document.getElementById('file-input').click();">Импорт настроек</button>
+                <input class="import" id="file-input" type="file" name="name" style="display: none;" />
               </div>
               <div>
                    <i>для вступления в силу надо перезагрузить страницу после сохранения</i>
@@ -645,6 +657,46 @@
         htmlString = '<span>' + post.dataset.originalContent + '</span>';
         //post.innerHTML = post.dataset.originalContent;
         escapeHTML(post, htmlString);
+    });
+
+    live('click', '.BO__settings button.export', function (e) {
+        // Get the "BO_SETTINGS" item from local storage
+        var boSettings = localStorage.getItem("BO__SETTINGS");
+
+        if (boSettings) {
+            // Create a Blob with the content of the item
+            var blob = new Blob([boSettings], {type: 'text/csv'});
+
+            // Create a temporary anchor element
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+
+            // Set the filename for the download
+            a.download = 'orbitar.csv';
+
+            // Append the anchor to the body and trigger the download
+            document.body.appendChild(a);
+            a.click();
+
+            // Clean up
+            document.body.removeChild(a);
+        } else {
+            console.error("No 'BO__SETTINGS' item found in local storage.");
+        }
+    });
+
+    live('change', '.BO__settings input.import', function (e) {
+        var reader = new FileReader();
+
+        reader.onload = function (event) {
+            var csvData = event.target.result;
+
+            localStorage.setItem("BO__SETTINGS", csvData);
+
+            console.log("Data imported from CSV to local storage successfully.");
+        };
+
+        reader.readAsText(e.target.files[0]);
     });
 
     const layoutChangeCss = (settings.useFont ? `
@@ -1330,6 +1382,103 @@ function registered (genderId) {
             }
         }
     }
+
+    const processComment = function (commentBlock, post) {
+        // Find the header, figure, footer, and content within this comment block
+        var header = commentBlock.querySelector('[class*="SignatureComponent_signature__"]');        
+        var footer = commentBlock.querySelector('[class*="CommentComponent_controls__"]');
+        var content = commentBlock.querySelector('[class*="CommentComponent_answers__"]');
+        var commentId = commentBlock.parentElement.getAttribute("data-comment-id");
+
+        //var menu = footer.querySelector("menu");
+
+        // Create the collapse/expand button
+       /* var button = document.createElement("button");
+        button.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+        button.style.cursor = "pointer";
+        button.style.marginLeft = "1rem";
+        //console.log(footer);
+        // Add the button to the header
+        footer.appendChild(button);
+
+        // Set a click event for the collapse/expand button
+        button.addEventListener("click", function () {
+            if (content.style.display === "none") {
+                content.style.display = "";
+                footer.style.display = "";                
+                commentBlock.style.height = "";
+                button.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+                // Find all following comment blocks
+                var followingComments = commentBlock.nextElementSibling;
+                while (
+                    followingComments &&
+                    followingComments.className.match(/CommentComponent_answers__[a-zA-Z0-9]{5}/)
+                ) {
+                    followingComments.style.display = "";
+                    collapseChildrenLink.innerHTML = "скрыть ответы";
+                    followingComments = followingComments.nextElementSibling;
+                }
+            } else {
+                content.style.display = "none";
+                footer.style.display = "none";
+                commentBlock.style.height = "40px";
+                commentBlock.style.paddingTop = "0.53rem";
+                button.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+
+                // Find all following comment blocks
+                var followingComments = commentBlock.nextElementSibling;
+                while (
+                    followingComments &&
+                    followingComments.className.match(/CommentComponent_answers__[a-zA-Z0-9]{5}/)
+                ) {
+                    followingComments.style.display = "none";
+                    collapseChildrenLink.innerHTML = "показать ответы";
+                    followingComments = followingComments.nextElementSibling;
+                }
+            }
+        });   */
+        // Check if this comment has any children
+        var nextComment = commentBlock.nextElementSibling;        
+        if (
+            nextComment &&
+            nextComment.className.match(/CommentComponent_answers__[a-zA-Z0-9]{5}/)
+        ) {
+            // Create the collapse children button
+            var collapseChildrenButton = document.createElement("a");
+            var collapseChildrenLink = document.createElement("button");
+            collapseChildrenLink.class = "stretched-link";
+            collapseChildrenLink.innerHTML = "скрыть ответы";
+            collapseChildrenLink.style.cursor = "pointer";
+            collapseChildrenButton.appendChild(collapseChildrenLink);
+
+            // Add the button to the menu in the footer
+            footer.appendChild(collapseChildrenButton);
+
+            // Set a click event for the collapse children button
+            collapseChildrenLink.addEventListener("click", function () {
+                // Find all following comment blocks
+                var followingComments = commentBlock.nextElementSibling;
+                console.log(post);
+                while (
+                    followingComments &&
+                    followingComments.className.match(/CommentComponent_answers__[a-zA-Z0-9]{5}/)
+                ) {
+                    if (followingComments.style.display === "none") {
+                        followingComments.style.display = "";
+                        collapseChildrenLink.innerHTML = "скрыть ответы";
+                    } else {
+                        followingComments.style.display = "none";
+                        collapseChildrenLink.innerHTML = "показать ответы";
+                    }
+                    followingComments = followingComments.nextElementSibling;
+                }
+            });
+        }
+    }
+
+   
+
+    
     
 
 })();
