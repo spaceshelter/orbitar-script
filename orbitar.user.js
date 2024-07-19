@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Orbitar temporary tweaks
 // @namespace    http://tampermonkey.net/
-// @version      1.5.3
+// @version      1.5.4
 // @description  Slightly modify orbitar.space UI
 // @author       pazoozoo42 & LazyKarlson
 // @match        https://*.orbitar.space/*
@@ -227,6 +227,16 @@
                 return;
             }
 
+            const commentBody = el.querySelector('div.commentBody');
+            let postId = null;            
+            if (document.location.href) {
+                let result = document.location.href.match(/\/(p[0-9]+)/);
+                    if (result && result.length >= 2) {
+                        postId = result[1];
+                    }
+                }            
+            processComment(commentBody, postId);
+
             const signatureCAuthorLink = commentSignature.querySelector('a.i-user');
             const commentAuthor = commentSignature.querySelector('a.i-user').innerText;
 
@@ -246,6 +256,10 @@
                 let currentPost = document.querySelector('[class*=PostComponent_post__] [class*="SignatureComponent_signature__"] a');
                 if (currentPost) {
                     let currentPostAuthor = currentPost.textContent || currentPost.innerText;
+
+                    if (settings.markPostAuthor){
+                        markPostAuthor(currentPostAuthor);
+                    }                   
                     document.querySelectorAll('[class*="CommentComponent_comment__"]').forEach((el) => {
                         let commentAuthorContainer = el.querySelector('[class*=SignatureComponent_signature__] a');
                         let commentAuthor = commentAuthorContainer.textContent || commentAuthorContainer.innerText;
@@ -276,7 +290,7 @@
                         }
                     });
                 }
-            }
+            }            
 
             if (settings.addVocativeToComments) {
                 document.querySelectorAll('[class*=CommentComponent_answers__] > [class*=CommentComponent_comment__]').forEach(function (el) {
@@ -371,7 +385,7 @@
     let lastUrl = '';
     let count = 0;
     const callback = function () {
-        doStuff();
+        doStuff();        
         if (location.href !== lastUrl) {
             count = 0;
             lastUrl = location.href;
@@ -404,7 +418,7 @@
         }
     };
     const observer = new MutationObserver(callback);
-    observer.observe(targetNode, config);
+    observer.observe(targetNode, config);     
 
     doStuff();
 
@@ -446,7 +460,10 @@
             hideCommentsRatings: document.querySelector('[data-setting-name="hideCommentsRatings"]').checked,
             scrollToTop: document.querySelector('[data-setting-name="scrollToTop"]').checked,
             newCommentsNav: document.querySelector('[data-setting-name="newCommentsNav"]').checked,
+            newCommentsNavPosition: document.querySelector('[data-setting-name="newCommentsNavPosition"]').value,
+            newCommentsNavPositionSide: document.querySelector('[data-setting-name="newCommentsNavPositionSide"]').value,
             userInfoPopUp: document.querySelector('[data-setting-name="userInfoPopUp"]').checked,
+            markPostAuthor: document.querySelector('[data-setting-name="markPostAuthor"]').checked,
             addVocativeToComments: document.querySelector('[data-setting-name="addVocativeToComments"]').checked,
             vocativeBold: document.querySelector('[data-setting-name="vocativeBold"]').checked,
             vocativeItalic: document.querySelector('[data-setting-name="vocativeItalic"]').checked,
@@ -528,9 +545,14 @@
               </div>
               <div>
                   <label><input type="checkbox" data-setting-name="newCommentsNav" ` + (settings.newCommentsNav ? 'checked="1"' : '') + ` /> - показывать кнопки навигации по новым комментам</label>
+                  <label><input type="text" maxlength="4" size="4" data-setting-name="newCommentsNavPosition" value="` + (settings.newCommentsNavPosition ? settings.newCommentsNavPosition : 100) + `" />px - позиция кнопок навигации по новым комментам<br /></label>
+<label>Кнопки навигации по новым комментам<select name="newCommentsNavPositionSide" data-setting-name="newCommentsNavPositionSide"><option value="right" ` + (settings.newCommentsNavPositionSide === 'right' ? 'selected' : '') + ` >справа</option><option value="left" ` + (settings.newCommentsNavPositionSide === 'left' ? 'selected' : '') + `>слева</option></select></label>
               </div>
-<div>
+              <div>
                   <label><input type="checkbox" data-setting-name="userInfoPopUp" ` + (settings.userInfoPopUp ? 'checked="1"' : '') + ` /> - показывать подсказку с информацией юзернейма</label>
+              </div>
+                <div>
+                  <label><input type="checkbox" data-setting-name="markPostAuthor" ` + (settings.markPostAuthor ? 'checked="1"' : '') + ` /> - выделять юзернейм автора поста в комментах</label>
               </div>
           </div>
           </div>
@@ -558,7 +580,10 @@
         </div>
           <div style="position: absolute; bottom: 10px;">
               <div>
-                  <button class="save" data-reload="1">сохранить и перезагрузить страницу</button>
+                <button class="save" data-reload="1">сохранить и перезагрузить страницу</button>
+                <button class="export">Экспорт настроек</button>
+                <button onclick="document.getElementById('file-input').click();">Импорт настроек</button>
+                <input class="import" id="file-input" type="file" name="name" style="display: none;" />
               </div>
               <div>
                    <i>для вступления в силу надо перезагрузить страницу после сохранения</i>
@@ -638,6 +663,46 @@
         escapeHTML(post, htmlString);
     });
 
+    live('click', '.BO__settings button.export', function (e) {
+        // Get the "BO_SETTINGS" item from local storage
+        var boSettings = localStorage.getItem("BO__SETTINGS");
+
+        if (boSettings) {
+            // Create a Blob with the content of the item
+            var blob = new Blob([boSettings], {type: 'text/csv'});
+
+            // Create a temporary anchor element
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+
+            // Set the filename for the download
+            a.download = 'orbitar.csv';
+
+            // Append the anchor to the body and trigger the download
+            document.body.appendChild(a);
+            a.click();
+
+            // Clean up
+            document.body.removeChild(a);
+        } else {
+            console.error("No 'BO__SETTINGS' item found in local storage.");
+        }
+    });
+
+    live('change', '.BO__settings input.import', function (e) {
+        var reader = new FileReader();
+
+        reader.onload = function (event) {
+            var csvData = event.target.result;
+
+            localStorage.setItem("BO__SETTINGS", csvData);
+
+            console.log("Data imported from CSV to local storage successfully.");
+        };
+
+        reader.readAsText(e.target.files[0]);
+    });
+
     const layoutChangeCss = (settings.useFont ? `
       * {
         font-family: "${settings.useFont}" !important;
@@ -654,6 +719,7 @@
       .i-user:before {
           content: '';
       }
+
       [class*="PostComponent_post__"] [class*="PostComponent_controls__"] {
           display: flex;
           flex-direction: row-reverse;
@@ -949,6 +1015,7 @@
             scroll-margin-top: 80px;
             border: 1px solid transparent;
         }
+
         .prevC {
         width: 40px;
         height: 40px;
@@ -960,11 +1027,11 @@
         color: DimGray;
         text-decoration: none;
         position: fixed;
-        bottom: 150px;
-        right: 0;
+        bottom: ` + (parseInt(settings.newCommentsNavPosition) + 50) + `px; 
+        ` + (settings.newCommentsNavPositionSide === 'right' ? 'right: 0;' : 'left: 0;')+ `
+        border-top-` + (settings.newCommentsNavPositionSide === 'right' ? 'left' : 'right') + `-radius: 8px;
         display: none;
-        border: 1px solid grey;
-        border-top-left-radius: 8px;
+        border: 1px solid grey;        
         box-shadow: 0 0 3px grey;
         transition: opacity 250ms ease-out;
         opacity: .5;
@@ -987,11 +1054,11 @@
             color: DimGray;
             text-decoration: none;
             position: fixed;
-            bottom: 100px;
-            right: 0;
+            bottom: ` + settings.newCommentsNavPosition + `px;
+            ` + (settings.newCommentsNavPositionSide === 'right' ? 'right: 0;' : 'left: 0;') + `
+            border-bottom-` + (settings.newCommentsNavPositionSide === 'right' ? 'left' : 'right') + `-radius: 8px;
             display: none;
-            border: 1px solid grey;
-            border-bottom-left-radius: 8px;
+            border: 1px solid grey;            
             box-shadow: 0 0 3px grey;
             transition: opacity 250ms ease-out;
             opacity: .5;
@@ -1004,6 +1071,12 @@
             }
         `;
 
+    const postAuthorCss = `        
+        .author-comment {
+        font-weight: bold !important;
+        }        
+        `;
+
 
 
     const css = hiddenCss + '\n' + settingsCss + '\n' +
@@ -1011,7 +1084,8 @@
         (settings.wideContent ? wideContentCss : '') + '\n' +
         (settings.addVocativeToComments ? vocativesCss : '') + '\n' +
         (settings.scrollToTop ? scrollToTopCss : '') + '\n' +
-        (settings.newCommentsNav ? newCommentsNavCss : '') + '\n';
+        (settings.newCommentsNav ? newCommentsNavCss : '') + '\n' +
+        (settings.markPostAuthor ? postAuthorCss : '') + '\n';
 
 
     const head = document.head || document.getElementsByTagName('head')[0];
@@ -1032,7 +1106,7 @@
     var timeoutID;
 
     function scrollToTop() {
-        var scrolled = window.pageYOffset || document.documentElement.scrollTop;
+        var scrolled = window.scrollY || document.documentElement.scrollTop;
         var ch = document.documentElement.clientHeight;
         if (scrolled === 0) {
             clearTimeout(timeoutID);
@@ -1058,7 +1132,7 @@
     }
 
     function toggleScrollToTop() {
-        var scrolled = window.pageYOffset || document.documentElement.scrollTop;
+        var scrolled = window.scrollY || document.documentElement.scrollTop;
         var ch = document.documentElement.clientHeight;
         var elm = document.querySelector('.scrollToTop');
         if (scrolled > ch / 1.1) {
@@ -1301,5 +1375,96 @@ function registered (genderId) {
             })(list.item(i));
         }
     }
+
+    function markPostAuthor(postAuthorUsername) {       
+        var comments = document.getElementsByClassName('i-user');
+        for (var i = 0; i < comments.length; i++) {
+            var comment = comments[i];            
+            var commentAuthorUsername = comment.textContent.trim();
+            if (commentAuthorUsername === postAuthorUsername) {                
+                comment.classList.add('author-comment');
+            }
+        }
+    }
+
+    const getHidingComments = function () {
+        let currentSettings = getSettings();
+        if (!currentSettings.hideComments) {
+            return [];
+        }
+        if (currentSettings.hideComments.length === 1 && currentSettings.hideComments[0] === '') {
+            return [];
+        }
+        return currentSettings.hideComments;
+    }
+
+    const processComment = function (commentBlock, post) {
+        
+        var header = commentBlock.querySelector('[class*="SignatureComponent_signature__"]');        
+        var footer = commentBlock.querySelector('[class*="CommentComponent_controls__"]');
+        var content = commentBlock.querySelector('[class*="CommentComponent_answers__"]');
+        var commentId = commentBlock.parentElement.getAttribute("data-comment-id");
+
+        var nextComment = commentBlock.nextElementSibling; 
+        
+               
+        if (
+            nextComment &&
+            nextComment.className.match(/CommentComponent_answers__[a-zA-Z0-9]{5}/)
+        ) {
+            
+            var collapseChildrenButton = document.createElement("a");
+            var collapseChildrenLink = document.createElement("button");
+            collapseChildrenLink.class = "stretched-link";
+            collapseChildrenLink.innerHTML = "скрыть ответы";
+            collapseChildrenLink.style.cursor = "pointer";
+            collapseChildrenButton.appendChild(collapseChildrenLink);
+            
+            footer.appendChild(collapseChildrenButton);
+            let hideComments = getHidingComments();
+            var followingComments = commentBlock.nextElementSibling;
+            if (commentId && hideComments.includes(commentId)) {
+                 followingComments.style.display = "none";
+                        collapseChildrenLink.innerHTML = "показать ответы";
+            }
+            collapseChildrenLink.addEventListener("click", function () {
+                followingComments = commentBlock.nextElementSibling;
+                while (
+                    followingComments &&
+                    followingComments.className.match(/CommentComponent_answers__[a-zA-Z0-9]{5}/)
+                ) {
+                    if (followingComments.style.display === "none") {
+                        followingComments.style.display = "";
+                        collapseChildrenLink.innerHTML = "скрыть ответы";
+
+                        let hideComments = getHidingComments();
+                       
+                        if (commentId && hideComments.includes(commentId)) {
+                            hideComments.splice(hideComments.indexOf(commentId), 1);
+                            settings.hideComments = hideComments;
+                            localStorage.setItem('BO__SETTINGS', JSON.stringify(settings));
+                        }
+                    } else {
+                        followingComments.style.display = "none";
+                        collapseChildrenLink.innerHTML = "показать ответы";
+
+                        let hideComments = getHidingComments();
+                       
+                        if (commentId && !hideComments.includes(commentId)) {
+                            hideComments.push(commentId);
+                            settings.hideComments = hideComments;
+                            localStorage.setItem('BO__SETTINGS', JSON.stringify(settings));
+                        }
+                    }
+                    followingComments = followingComments.nextElementSibling;
+                }
+            });
+        }
+    }
+
+   
+
+    
+    
 
 })();
