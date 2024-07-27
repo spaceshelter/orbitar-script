@@ -218,25 +218,14 @@
             el.dataset.boProcessed = '1';
         });
 
-        document.querySelectorAll('[class*="CommentComponent_comment__"]').forEach((el) => {
+        document.querySelectorAll('[class*="CommentComponent_comment__"]').forEach((el) => {          
             if (el.dataset.boProcessed) {
                 return;
             }
             const commentSignature = el.querySelector('[class*="SignatureComponent_signature__"]');
             if (!commentSignature) {
                 return;
-            }
-
-            const commentBody = el.querySelector('div.commentBody');
-            let postId = null;            
-            if (document.location.href) {
-                let result = document.location.href.match(/\/(p[0-9]+)/);
-                    if (result && result.length >= 2) {
-                        postId = result[1];
-                    }
-                }            
-            //processComment(commentBody, postId);
-
+            }            
             const signatureCAuthorLink = commentSignature.querySelector('a.i-user');
             const commentAuthor = commentSignature.querySelector('a.i-user').innerText;
 
@@ -288,6 +277,12 @@
                                 commentBodyContainer.classList.remove('BO__hidden_comment');
                             });
                         }
+                        /*if (!commentBodyContainer || commentBodyContainer.dataset.commentsProcessed) {
+                            return;
+                        } else {
+                            processComment(commentBodyContainer);
+                            commentBodyContainer.dataset.commentsProcessed = '1';
+                        } */
                     });
                 }
             }            
@@ -375,8 +370,28 @@
                     }
                 });
             }
-        }
+        } 
+        /*if (document.location.href.match(/\/u\/[^\/]+/) && !document.location.href.match(/\/u\/[^\/]+\//)) {            
+            document.querySelectorAll('[class*=PostComponent_controls__]').forEach(function (el) {
+                let parentProfileNode = el.querySelector('[class*=UserProfileName_profile_name__]');
+                if (!parentProfileNode || parentProfileNode.dataset.userNoteProcessed) {
+                        return;
+                    } else {
+                    
+                    var textarea = document.createElement("button");
+                    textarea.innerHTML = "скрыть комментарии";
+                    parentProfileNode.appendChild(textarea);
+                    parentProfileNode.dataset.userNoteProcessed = '1';                                        
+                    }
+
+            });
+        } */            
     }
+
+        
+
+                
+
 
     const targetNode = document.getElementsByTagName('html')[0];
     const config = {attributes: false, childList: true, subtree: true};
@@ -416,6 +431,7 @@
                 previousUrl = location.href;
             }
         }
+        
     };
     const observer = new MutationObserver(callback);
     observer.observe(targetNode, config);     
@@ -1398,11 +1414,9 @@ function registered (genderId) {
         return currentSettings.hideComments;
     }
 
-    const processComment = function (commentBlock, post) {
-        
-        var header = commentBlock.querySelector('[class*="SignatureComponent_signature__"]');        
-        var footer = commentBlock.querySelector('[class*="CommentComponent_controls__"]');
-        var content = commentBlock.querySelector('[class*="CommentComponent_answers__"]');
+    function processComment(commentBlock) {        
+                
+        var footer = commentBlock.querySelector('[class*="CommentComponent_controls__"]');       
         var commentId = commentBlock.parentElement.getAttribute("data-comment-id");
 
         var nextComment = commentBlock.nextElementSibling; 
@@ -1461,10 +1475,22 @@ function registered (genderId) {
             });
         }
     }
-
-   
-
+function processUserNotes(profileDiv) {   
+    let hasBeenCalled = false;
+    return function () {
+        if (!hasBeenCalled) {
+        const parentProfileNode = profileDiv.querySelector('[class*=UserProfileName_profile_name__]');
+        var textarea = document.createElement("button");
+        textarea.innerHTML = "скрыть комментарии";        
+        //parentProfileNode.appendChild(textarea); 
+            console.log('Function called!');
+        hasBeenCalled = true; 
+        } else {
+            console.log('Function can only be called once.');
+        }
+    };
     
+        
+};
     
-
 })();
