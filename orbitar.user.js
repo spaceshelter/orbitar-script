@@ -235,7 +235,7 @@
                         postId = result[1];
                     }
                 }            
-            processComment(commentBody, postId);
+            //processComment(commentBody, postId);
 
             const signatureCAuthorLink = commentSignature.querySelector('a.i-user');
             const commentAuthor = commentSignature.querySelector('a.i-user').innerText;
