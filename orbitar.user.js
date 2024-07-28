@@ -227,8 +227,7 @@
                 return;
             }            
             const signatureCAuthorLink = commentSignature.querySelector('a.i-user');
-            const commentAuthor = commentSignature.querySelector('a.i-user').innerText;
-
+            const commentAuthor = commentSignature.querySelector('a.i-user').innerText;            
             if (commentAuthor) {
                 const hideCAuthorEl = document.createElement('span');
                 hideCAuthorEl.className = 'BO__hide-username';
@@ -237,8 +236,18 @@
                 hideCAuthorEl.dataset.postAuthor = commentAuthor;
                 signatureCAuthorLink.insertAdjacentElement('afterend', hideCAuthorEl);
             }
-            el.dataset.boProcessed = '1';
+            el.dataset.boProcessed = '1';            
         });
+
+        /*document.querySelectorAll('[class*="CommentComponent_comment__"]').forEach((el) => {           
+            const commentBody = el.querySelector('div.commentBody');            
+            if (!commentBody || commentBody.dataset.commentsProcessed) {
+                return;
+            } else {
+                setTimeout(processComment(commentBody), 150);
+                commentBody.dataset.commentsProcessed = '1';
+            }
+        });*/
 
         if (document.location.href.match(/space\/(s\/[a-z0-9_-]+?\/)?p\d+/)) {
             if (!currentPostAuthor) {
@@ -276,13 +285,7 @@
                             commentBodyContainer.addEventListener('click', function () {
                                 commentBodyContainer.classList.remove('BO__hidden_comment');
                             });
-                        }
-                        /*if (!commentBodyContainer || commentBodyContainer.dataset.commentsProcessed) {
-                            return;
-                        } else {
-                            processComment(commentBodyContainer);
-                            commentBodyContainer.dataset.commentsProcessed = '1';
-                        } */
+                        }                        
                     });
                 }
             }            
@@ -328,6 +331,17 @@
                     escapeHTML(commentHtmlContainer, htmlString);
                 });
             }
+
+            document.querySelectorAll('.comment').forEach((el) => {
+                let commentBody = el.querySelector('.commentBody');
+                if (!commentBody || commentBody.dataset.commentsProcessed) {
+                    return;
+                } else {
+                    processComment(commentBody);
+                    commentBody.dataset.commentsProcessed = '1';
+                }
+            });
+
         } else {
             currentPostAuthor = null;
         }
@@ -371,21 +385,22 @@
                 });
             }
         } 
-        /*if (document.location.href.match(/\/u\/[^\/]+/) && !document.location.href.match(/\/u\/[^\/]+\//)) {            
+        if (document.location.href.match(/\/u\/[^\/]+/) && !document.location.href.match(/\/u\/[^\/]+\//)) {            
             document.querySelectorAll('[class*=PostComponent_controls__]').forEach(function (el) {
                 let parentProfileNode = el.querySelector('[class*=UserProfileName_profile_name__]');
                 if (!parentProfileNode || parentProfileNode.dataset.userNoteProcessed) {
                         return;
-                    } else {
-                    
+                    } else {                    
                     var textarea = document.createElement("button");
-                    textarea.innerHTML = "скрыть комментарии";
-                    parentProfileNode.appendChild(textarea);
+                    var para = document.createElement("div");
+                    para.appendChild(textarea);
+                    textarea.innerHTML = "Создать заметку";
+                    parentProfileNode.appendChild(para);
                     parentProfileNode.dataset.userNoteProcessed = '1';                                        
                     }
 
             });
-        } */            
+        }       
     }
 
         
@@ -1401,18 +1416,7 @@ function registered (genderId) {
                 comment.classList.add('author-comment');
             }
         }
-    }
-
-    const getHidingComments = function () {
-        let currentSettings = getSettings();
-        if (!currentSettings.hideComments) {
-            return [];
-        }
-        if (currentSettings.hideComments.length === 1 && currentSettings.hideComments[0] === '') {
-            return [];
-        }
-        return currentSettings.hideComments;
-    }
+    }   
 
     function processComment(commentBlock) {        
                 
@@ -1420,7 +1424,16 @@ function registered (genderId) {
         var commentId = commentBlock.parentElement.getAttribute("data-comment-id");
 
         var nextComment = commentBlock.nextElementSibling; 
-        
+        function getHidingComments () {
+            let currentSettings = getSettings();
+            if (!currentSettings.hideComments) {
+                return;
+            }
+            if (currentSettings.hideComments.length === 1 && currentSettings.hideComments[0] === '') {
+                return;
+            }
+            return currentSettings.hideComments;
+        }
                
         if (
             nextComment &&
