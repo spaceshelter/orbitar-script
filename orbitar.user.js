@@ -10,528 +10,647 @@
 // @grant        none
 // ==/UserScript==
 (function () {
-    let currentLoggedUsername = null;
-    let currentLoggedUserId = null;
-    let htmlString = '';
+  let currentLoggedUsername = null;
+  let currentLoggedUserId = null;
+  let htmlString = "";
 
-    const parser = new DOMParser();
+  const parser = new DOMParser();
 
-    const getCookie = function (name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) {
-            return parts.pop().split(';').shift();
-        }
+  const getCookie = function (name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+      return parts.pop().split(";").shift();
     }
+  };
 
-    fetch(document.location.protocol + '//api.' + document.location.host + '/api/v1/status', {
-        'headers': {
-            'content-type': 'application/json',
-            'x-session-id': getCookie('session')
-        },
-        'body': '{"site":"main"}',
-        'method': 'POST',
-        'mode': 'cors',
-        'credentials': 'omit'
-    }).then(function (response) {
-        return response.json();
-    }).then(function (responseJson) {
-        currentLoggedUsername = responseJson.payload.user.username;
-        currentLoggedUserId = responseJson.payload.user.id;
-    }).catch(function () {
+  fetch(
+    document.location.protocol +
+      "//api." +
+      document.location.host +
+      "/api/v1/status",
+    {
+      headers: {
+        "content-type": "application/json",
+        "x-session-id": getCookie("session"),
+      },
+      body: '{"site":"main"}',
+      method: "POST",
+      mode: "cors",
+      credentials: "omit",
+    },
+  )
+    .then(function (response) {
+      return response.json();
+    })
+    .then(function (responseJson) {
+      currentLoggedUsername = responseJson.payload.user.username;
+      currentLoggedUserId = responseJson.payload.user.id;
+    })
+    .catch(function () {});
+
+  const live = function (eventType, elementQuerySelector, cb) {
+    document.addEventListener(eventType, function (event) {
+      const qs = document.querySelectorAll(elementQuerySelector);
+      if (qs) {
+        let el = event.target,
+          index = -1;
+        while (el && (index = Array.prototype.indexOf.call(qs, el)) === -1) {
+          el = el.parentElement;
+        }
+        if (index > -1) {
+          cb.call(el, event);
+        }
+      }
     });
+  };
 
-    const live = function (eventType, elementQuerySelector, cb) {
-        document.addEventListener(eventType, function (event) {
-            const qs = document.querySelectorAll(elementQuerySelector);
-            if (qs) {
-                let el = event.target, index = -1;
-                while (el && ((index = Array.prototype.indexOf.call(qs, el)) === -1)) {
-                    el = el.parentElement;
-                }
-                if (index > -1) {
-                    cb.call(el, event);
-                }
-            }
-        });
+  const getSettings = function () {
+    let currentSettings = {};
+    try {
+      currentSettings = JSON.parse(localStorage.getItem("BO__SETTINGS"));
+    } catch (e) {}
+    if (currentSettings === null) {
+      currentSettings = {};
     }
+    return Object.assign(
+      {},
+      {
+        changeLayout: false,
+        hideCommentsRatings: false,
+        addVocativeToComments: false,
+        scrollToTop: false,
+        newCommentsNav: false,
+        userInfoPopUp: false,
+        wideContent: false,
+      },
+      currentSettings,
+    );
+  };
 
-    const getSettings = function () {
-        let currentSettings = {};
-        try {
-            currentSettings = JSON.parse(localStorage.getItem('BO__SETTINGS'))
-        } catch (e) {
-        }
-        if (currentSettings === null) {
-            currentSettings = {};
-        }
-        return Object.assign({}, {
-            changeLayout: false,
-            hideCommentsRatings: false,
-            addVocativeToComments: false,
-            scrollToTop: false,
-            newCommentsNav: false,
-            userInfoPopUp: false,
-            wideContent: false
-        }, currentSettings);
+  const getHidingUsernames = function () {
+    let currentSettings = getSettings();
+    if (!currentSettings.hide) {
+      return [];
     }
-
-    const getHidingUsernames = function () {
-        let currentSettings = getSettings();
-        if (!currentSettings.hide) {
-            return [];
-        }
-        if (currentSettings.hide.length === 1 && currentSettings.hide[0] === '') {
-            return [];
-        }
-        return currentSettings.hide;
+    if (currentSettings.hide.length === 1 && currentSettings.hide[0] === "") {
+      return [];
     }
+    return currentSettings.hide;
+  };
 
-    const getHidingPosts = function () {
-        let currentSettings = getSettings();
-        if (!currentSettings.hidePosts) {
-            return [];
+  const getHidingPosts = function () {
+    let currentSettings = getSettings();
+    if (!currentSettings.hidePosts) {
+      return [];
+    }
+    if (
+      currentSettings.hidePosts.length === 1 &&
+      currentSettings.hidePosts[0] === ""
+    ) {
+      return [];
+    }
+    return currentSettings.hidePosts;
+  };
+
+  const doHidePost = function (el, author, site) {
+    el.classList.add("BO__hidden_post");
+    let currentSettings = getSettings();
+    el.dataset.originalContent = el.innerHTML;
+    htmlString =
+      "<span>скрытый пост от " +
+      author +
+      (site ? " на " + site : "") +
+      "</span>";
+    if (currentSettings.hidePostsForGood) {
+      el.innerHTML = "";
+    } else {
+      escapeHTML(el, htmlString);
+    }
+  };
+
+  const escapeHTML = function (el, str) {
+    let message = str;
+    const parsed = parser.parseFromString(message, `text/html`);
+    el.innerHTML = "";
+    el.appendChild(parsed.body.firstChild);
+  };
+
+  let currentPostAuthor = null;
+  const settings = getSettings();
+  const hideUsernames = getHidingUsernames();
+  const hidePosts = getHidingPosts();
+
+  let vocativeOpeningTags = [];
+  let vocativeClosingTags = [];
+  if (settings.vocativeBold) {
+    vocativeOpeningTags.push("<b>");
+    vocativeClosingTags.push("</b>");
+  }
+  if (settings.vocativeItalic) {
+    vocativeOpeningTags.push("<i>");
+    vocativeClosingTags.push("</i>");
+  }
+
+  const doStuff = function () {
+    document
+      .querySelectorAll('[class*="PostComponent_post__"]')
+      .forEach((el) => {
+        if (el.dataset.boProcessed) {
+          return;
         }
-        if (currentSettings.hidePosts.length === 1 && currentSettings.hidePosts[0] === '') {
-            return [];
-        }
-        return currentSettings.hidePosts;
-    }
-
-    const doHidePost = function (el, author, site) {
-        el.classList.add('BO__hidden_post');
-        let currentSettings = getSettings();
-        el.dataset.originalContent = el.innerHTML;
-        htmlString = '<span>скрытый пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
-        // el.innerHTML = currentSettings.hidePostsForGood ? '' : '<span>спрятанный пост от ' + author + (site ? (' на ' + site) : '') + '</span>';
-        if (currentSettings.hidePostsForGood) {
-            el.innerHTML = '';
-        }
-        else {
-            escapeHTML(el, htmlString);
+        const signature = el.querySelector(
+          '[class*="SignatureComponent_signature__"]',
+        );
+        if (!signature) {
+          return;
         }
 
-    }
+        const signaturreLinks = signature.querySelectorAll('a[href*="/p"]');
+        const signatureSiteLink = signature.querySelector('a[href*="/s/"]');
+        const signatureAuthorLink = signature.querySelector('a[href*="/u/"]');
+        let postSite = null;
+        if (signatureSiteLink && signatureSiteLink.innerHTML) {
+          postSite = signatureSiteLink.innerHTML;
+        }
 
-    const escapeHTML = function (el, str) {
-        let message = str;
-        const parsed = parser.parseFromString(message, `text/html`);
-        el.innerHTML = "";
-        //const tags = parsed.body;
-        //for (const tag of tags) {
-        el.appendChild(parsed.body.firstChild);
-        //el.innerHTML = parsed.body.innerHTML;
-        //}
-    }
-
-    let currentPostAuthor = null;
-    const settings = getSettings();
-    const hideUsernames = getHidingUsernames();
-    const hidePosts = getHidingPosts();
-
-    let vocativeOpeningTags = [];
-    let vocativeClosingTags = [];
-    if (settings.vocativeBold) {
-        vocativeOpeningTags.push('<b>');
-        vocativeClosingTags.push('</b>');
-    }
-    if (settings.vocativeItalic) {
-        vocativeOpeningTags.push('<i>');
-        vocativeClosingTags.push('</i>');
-    }
-
-    const doStuff = function () {
-        /*if (document.hidden) {
-            return;
-        }*/
-        document.querySelectorAll('[class*="PostComponent_post__"]').forEach((el) => {
-            if (el.dataset.boProcessed) {
-                return;
+        let postId = null;
+        signaturreLinks.forEach((link) => {
+          if (link.href) {
+            let result = link.href.match(/\/(p[0-9]+)/);
+            if (result && result.length >= 2) {
+              postId = result[1];
             }
-            const signature = el.querySelector('[class*="SignatureComponent_signature__"]');
-            if (!signature) {
-                return;
-            }
-
-            const signaturreLinks = signature.querySelectorAll('a[href*="/p"]');
-            const signatureSiteLink = signature.querySelector('a[href*="/s/"]');
-            const signatureAuthorLink = signature.querySelector('a[href*="/u/"]');
-            let postSite = null;
-            if (signatureSiteLink && signatureSiteLink.innerHTML) {
-                postSite = signatureSiteLink.innerHTML;
-            }
-
-            let postId = null;
-            signaturreLinks.forEach((link) => {
-                if (link.href) {
-                    let result = link.href.match(/\/(p[0-9]+)/);
-                    if (result && result.length >= 2) {
-                        postId = result[1];
-                    }
-                }
-            });
-
-            if (settings.changeLayout) {
-                const controlsContainer = el.querySelector('[class*=PostComponent_controls__]');
-                controlsContainer.insertAdjacentElement('afterbegin', signature);
-            }
-
-            const postAuthor = signature.querySelector('a.i-user').innerText;
-
-            if (postId) {
-                const hidePostEl = document.createElement('span');
-                hidePostEl.className = 'BO__hide-post';
-                hidePostEl.innerHTML = '×';
-                hidePostEl.title = "скрыть пост";
-                hidePostEl.dataset.postId = postId;
-                hidePostEl.dataset.postAuthor = postAuthor;
-                signature.insertAdjacentElement('beforeend', hidePostEl);
-            }
-
-            if (window.location.href.indexOf("/s/") < 0) {
-                if (postSite) {
-                    const hideSiteEl = document.createElement('span');
-                    hideSiteEl.className = 'BO__hide-site';
-                    hideSiteEl.innerHTML = '×';
-                    hideSiteEl.title = "игнорировать " + postSite;
-                    hideSiteEl.dataset.postSite = postSite;
-                    signatureSiteLink.insertAdjacentElement('afterend', hideSiteEl);
-                }
-            }
-
-            if (postAuthor) {
-                const hideAuthorEl = document.createElement('span');
-                hideAuthorEl.className = 'BO__hide-username';
-                hideAuthorEl.innerHTML = '×';
-                hideAuthorEl.title = "игнорировать " + postAuthor;
-                hideAuthorEl.dataset.postAuthor = postAuthor;
-                signatureAuthorLink.insertAdjacentElement('afterend', hideAuthorEl);
-            }
-
-            if (
-                hidePosts.includes(postId) ||
-                hideUsernames.includes(postAuthor) ||
-                (postSite && hidePosts.includes(postSite))
-            ) {
-                doHidePost(el, postAuthor, postSite);
-            }
-            el.dataset.boProcessed = '1';
+          }
         });
 
-        document.querySelectorAll('[class*="CommentComponent_comment__"]').forEach((el) => {          
-            if (el.dataset.boProcessed) {
-                return;
-            }
-            const commentSignature = el.querySelector('[class*="SignatureComponent_signature__"]');
-            if (!commentSignature) {
-                return;
-            }            
-            const signatureCAuthorLink = commentSignature.querySelector('a.i-user');
-            const commentAuthor = commentSignature.querySelector('a.i-user').innerText;            
-            if (commentAuthor) {
-                const hideCAuthorEl = document.createElement('span');
-                hideCAuthorEl.className = 'BO__hide-username';
-                hideCAuthorEl.innerHTML = '×';
-                hideCAuthorEl.title = "игнорировать " + commentAuthor;
-                hideCAuthorEl.dataset.postAuthor = commentAuthor;
-                signatureCAuthorLink.insertAdjacentElement('afterend', hideCAuthorEl);
-            }
-            el.dataset.boProcessed = '1';            
-        });
+        if (settings.changeLayout) {
+          const controlsContainer = el.querySelector(
+            "[class*=PostComponent_controls__]",
+          );
+          controlsContainer.insertAdjacentElement("afterbegin", signature);
+        }
 
-        /*document.querySelectorAll('[class*="CommentComponent_comment__"]').forEach((el) => {           
-            const commentBody = el.querySelector('div.commentBody');            
-            if (!commentBody || commentBody.dataset.commentsProcessed) {
-                return;
-            } else {
-                setTimeout(processComment(commentBody), 150);
-                commentBody.dataset.commentsProcessed = '1';
-            }
-        });*/
+        const postAuthor = signature.querySelector("a.i-user").innerText;
 
-        if (document.location.href.match(/space\/(s\/[a-z0-9_-]+?\/)?p\d+/)) {
-            if (!currentPostAuthor) {
-                let currentPost = document.querySelector('[class*=PostComponent_post__] [class*="SignatureComponent_signature__"] a');
-                if (currentPost) {
-                    let currentPostAuthor = currentPost.textContent || currentPost.innerText;
+        if (postId) {
+          const hidePostEl = document.createElement("span");
+          hidePostEl.className = "BO__hide-post";
+          hidePostEl.innerHTML = "×";
+          hidePostEl.title = "скрыть пост";
+          hidePostEl.dataset.postId = postId;
+          hidePostEl.dataset.postAuthor = postAuthor;
+          signature.insertAdjacentElement("beforeend", hidePostEl);
+        }
 
-                    if (settings.markPostAuthor){
-                        markPostAuthor(currentPostAuthor);
-                    }                   
-                    document.querySelectorAll('[class*="CommentComponent_comment__"]').forEach((el) => {
-                        let commentAuthorContainer = el.querySelector('[class*=SignatureComponent_signature__] a');
-                        let commentAuthor = commentAuthorContainer.textContent || commentAuthorContainer.innerText;
-                        let commentBodyContainer = el.querySelector('[class*="commentBody"]');
-                        let editingThisComment = el.querySelector('[class*="CreateCommentComponent_editor__"]');
-                        let previewingEditedComment = el.querySelector('[class*="CreateCommentComponent_preview__"]');
-                        if (editingThisComment || previewingEditedComment) {
-                            commentBodyContainer.classList.add('BO_editing_comment');
-                        } else {
-                            commentBodyContainer.classList.remove('BO_editing_comment');
-                        }
-                        if (currentPostAuthor === commentAuthor && !commentBodyContainer.className.includes('BO__CommentByAuthor')) {
-                            commentBodyContainer.className = commentBodyContainer.className + ' BO__CommentByAuthor';
-                        }
-                        if (
-                            currentLoggedUsername &&
-                            (commentAuthor === currentLoggedUsername) &&
-                            !commentBodyContainer.className.includes('BO__CommentByLoggedUser') &&
-                            currentPostAuthor !== commentAuthor
-                        ) {
-                            commentBodyContainer.className = commentBodyContainer.className + ' BO__CommentByLoggedUser';
-                        }
-                        if (hideUsernames.includes(commentAuthor)) {
-                            commentBodyContainer.classList.add('BO__hidden_comment');
-                            commentBodyContainer.addEventListener('click', function () {
-                                commentBodyContainer.classList.remove('BO__hidden_comment');
-                            });
-                        }                        
-                    });
-                }
-            }            
+        if (window.location.href.indexOf("/s/") < 0) {
+          if (postSite) {
+            const hideSiteEl = document.createElement("span");
+            hideSiteEl.className = "BO__hide-site";
+            hideSiteEl.innerHTML = "×";
+            hideSiteEl.title = "игнорировать " + postSite;
+            hideSiteEl.dataset.postSite = postSite;
+            signatureSiteLink.insertAdjacentElement("afterend", hideSiteEl);
+          }
+        }
 
-            if (settings.addVocativeToComments) {
-                document.querySelectorAll('[class*=CommentComponent_answers__] > [class*=CommentComponent_comment__]').forEach(function (el) {
-                    let parentComment = el.parentNode.parentNode.querySelector('.commentBody');
-                    if (!parentComment) {
-                        return;
-                    }
-                    let parentCommentAuthorContainer = parentComment.querySelector('[class*=SignatureComponent_signature__] a');
-                    if (!parentCommentAuthorContainer) {
-                        return;
-                    }
-                    let parentCommentAuthor = parentCommentAuthorContainer.innerText;
-                    if (!parentCommentAuthor) {
-                        return;
-                    }
-                    let commentHtmlContainer = el.querySelector('.commentBody [class*=CommentComponent_content__] [class*=ContentComponent_content__]');
-                    if (
-                        !commentHtmlContainer ||
-                        commentHtmlContainer.dataset.vocativeProcessed
-                    ) {
-                        return;
-                    }
-                    if (commentHtmlContainer.innerHTML.match(new RegExp(`^${parentCommentAuthor}[,:]`))) {
-                        return;
-                    }
-                    const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
-                    if (settings.vocativeLowercase) {
-                        //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
-                        htmlString = '<span>' + commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1) + '</span>';
-                        escapeHTML(commentHtmlContainer, htmlString);
-                    }
-                    //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
-                    htmlString = '<span>' + vocativeOpeningTags.join('')
-                        + parentCommentAuthor
-                        + vocativeClosingTags.join('')
-                        + ((settings.vocativeSymbol ? settings.vocativeSymbol : ',') + ' ')
-                        + (commentStartsWithMedia ? '<br/>' : '')
-                        + commentHtmlContainer.innerHTML + '</span>';
-                    commentHtmlContainer.dataset.vocativeProcessed = '1';
-                    escapeHTML(commentHtmlContainer, htmlString);
-                });
-            }
-
-            document.querySelectorAll('.comment').forEach((el) => {
-                let commentBody = el.querySelector('.commentBody');
-                if (!commentBody || commentBody.dataset.commentsProcessed) {
-                    return;
-                } else {
-                    processComment(commentBody);
-                    commentBody.dataset.commentsProcessed = '1';
-                }
-            });
-
-        } else {
-            currentPostAuthor = null;
+        if (postAuthor) {
+          const hideAuthorEl = document.createElement("span");
+          hideAuthorEl.className = "BO__hide-username";
+          hideAuthorEl.innerHTML = "×";
+          hideAuthorEl.title = "игнорировать " + postAuthor;
+          hideAuthorEl.dataset.postAuthor = postAuthor;
+          signatureAuthorLink.insertAdjacentElement("afterend", hideAuthorEl);
         }
 
         if (
-            document.location.href.match(/\/u\/[^\/]+\/comments/) ||
-            document.location.href.match(/profile\/comments/)
+          hidePosts.includes(postId) ||
+          hideUsernames.includes(postAuthor) ||
+          (postSite && hidePosts.includes(postSite))
         ) {
-            if (settings.addVocativeToComments) {
-                document.querySelectorAll('[class*=UserPage_userinfo__] [class*=FeedPage_feed__] [class*=CommentComponent_comment__]').forEach(function (el) {
-                    let parentCommentAuthorNode = el.querySelector('[class=commentBody] [class*=SignatureComponent_signature__]');
-                    if (parentCommentAuthorNode) {
-                        const parentCommentAuthor = parentCommentAuthorNode.getElementsByClassName('arrow');
-                        if (parentCommentAuthor && parentCommentAuthor[0]) {
-                            const parentCommentAuthorUsername = parentCommentAuthor[0].innerHTML;
-                            const commentHtmlContainer = el.querySelector('.commentBody [class*=CommentComponent_content__] [class*=ContentComponent_content__]');
-                            if (!commentHtmlContainer || commentHtmlContainer.dataset.vocativeProcessed) {
-                                return;
-                            }
-                            if (commentHtmlContainer.innerHTML.match(new RegExp(`^${parentCommentAuthor}[,:]`))) {
-                                return;
-                            }
-                            const commentStartsWithMedia = commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
-                            if (settings.vocativeLowercase) {
-                                //commentHtmlContainer.innerHTML = commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1);
-                                htmlString = '<span>' + commentHtmlContainer.innerHTML.charAt(0).toLowerCase() + commentHtmlContainer.innerHTML.slice(1) + '</span>';
-                                escapeHTML(commentHtmlContainer, htmlString);
-                            }
-                            //commentHtmlContainer.innerHTML = vocativeOpeningTags.join('')
-                            htmlString = '<span>' + vocativeOpeningTags.join('')
-                                + parentCommentAuthorUsername
-                                + vocativeClosingTags.join('')
-                                + ((settings.vocativeSymbol ? settings.vocativeSymbol : ',') + ' ')
-                                + (commentStartsWithMedia ? '<br/>' : '')
-                                + commentHtmlContainer.innerHTML + '</span>';
-                            commentHtmlContainer.dataset.vocativeProcessed = '1';
-                            escapeHTML(commentHtmlContainer, htmlString);
+          doHidePost(el, postAuthor, postSite);
+        }
+        el.dataset.boProcessed = "1";
+      });
 
-                        }
-                    }
+    document
+      .querySelectorAll('[class*="CommentComponent_comment__"]')
+      .forEach((el) => {
+        if (el.dataset.boProcessed) {
+          return;
+        }
+        const commentSignature = el.querySelector(
+          '[class*="SignatureComponent_signature__"]',
+        );
+        if (!commentSignature) {
+          return;
+        }
+        const signatureCAuthorLink = commentSignature.querySelector("a.i-user");
+        const commentAuthor =
+          commentSignature.querySelector("a.i-user").innerText;
+        if (commentAuthor) {
+          const hideCAuthorEl = document.createElement("span");
+          hideCAuthorEl.className = "BO__hide-username";
+          hideCAuthorEl.innerHTML = "×";
+          hideCAuthorEl.title = "игнорировать " + commentAuthor;
+          hideCAuthorEl.dataset.postAuthor = commentAuthor;
+          signatureCAuthorLink.insertAdjacentElement("afterend", hideCAuthorEl);
+        }
+        el.dataset.boProcessed = "1";
+      });
+
+    if (document.location.href.match(/space\/(s\/[a-z0-9_-]+?\/)?p\d+/)) {
+      if (!currentPostAuthor) {
+        let currentPost = document.querySelector(
+          '[class*=PostComponent_post__] [class*="SignatureComponent_signature__"] a',
+        );
+        if (currentPost) {
+          let currentPostAuthor =
+            currentPost.textContent || currentPost.innerText;
+
+          if (settings.markPostAuthor) {
+            markPostAuthor(currentPostAuthor);
+          }
+          document
+            .querySelectorAll('[class*="CommentComponent_comment__"]')
+            .forEach((el) => {
+              let commentAuthorContainer = el.querySelector(
+                "[class*=SignatureComponent_signature__] a",
+              );
+              let commentAuthor =
+                commentAuthorContainer.textContent ||
+                commentAuthorContainer.innerText;
+              let commentBodyContainer = el.querySelector(
+                '[class*="commentBody"]',
+              );
+              let editingThisComment = el.querySelector(
+                '[class*="CreateCommentComponent_editor__"]',
+              );
+              let previewingEditedComment = el.querySelector(
+                '[class*="CreateCommentComponent_preview__"]',
+              );
+              if (editingThisComment || previewingEditedComment) {
+                commentBodyContainer.classList.add("BO_editing_comment");
+              } else {
+                commentBodyContainer.classList.remove("BO_editing_comment");
+              }
+              if (
+                currentPostAuthor === commentAuthor &&
+                !commentBodyContainer.className.includes("BO__CommentByAuthor")
+              ) {
+                commentBodyContainer.className =
+                  commentBodyContainer.className + " BO__CommentByAuthor";
+              }
+              if (
+                currentLoggedUsername &&
+                commentAuthor === currentLoggedUsername &&
+                !commentBodyContainer.className.includes(
+                  "BO__CommentByLoggedUser",
+                ) &&
+                currentPostAuthor !== commentAuthor
+              ) {
+                commentBodyContainer.className =
+                  commentBodyContainer.className + " BO__CommentByLoggedUser";
+              }
+              if (hideUsernames.includes(commentAuthor)) {
+                commentBodyContainer.classList.add("BO__hidden_comment");
+                commentBodyContainer.addEventListener("click", function () {
+                  commentBodyContainer.classList.remove("BO__hidden_comment");
                 });
-            }
-        } 
-        if (document.location.href.match(/\/u\/[^\/]+/) && !document.location.href.match(/\/u\/[^\/]+\//)) {            
-            document.querySelectorAll('[class*=PostComponent_controls__]').forEach(function (el) {
-                let parentProfileNode = el.querySelector('[class*=UserProfileName_profile_name__]');
-                if (!parentProfileNode || parentProfileNode.dataset.userNoteProcessed) {
-                        return;
-                    } else {                    
-                    var textarea = document.createElement("button");
-                    var para = document.createElement("div");
-                    para.appendChild(textarea);
-                    textarea.innerHTML = "Создать заметку";
-                    parentProfileNode.appendChild(para);
-                    parentProfileNode.dataset.userNoteProcessed = '1';                                        
-                    }
-
+              }
             });
-        }       
+        }
+      }
+
+      if (settings.addVocativeToComments) {
+        document
+          .querySelectorAll(
+            "[class*=CommentComponent_answers__] > [class*=CommentComponent_comment__]",
+          )
+          .forEach(function (el) {
+            let parentComment =
+              el.parentNode.parentNode.querySelector(".commentBody");
+            if (!parentComment) {
+              return;
+            }
+            let parentCommentAuthorContainer = parentComment.querySelector(
+              "[class*=SignatureComponent_signature__] a",
+            );
+            if (!parentCommentAuthorContainer) {
+              return;
+            }
+            let parentCommentAuthor = parentCommentAuthorContainer.innerText;
+            if (!parentCommentAuthor) {
+              return;
+            }
+            let commentHtmlContainer = el.querySelector(
+              ".commentBody [class*=CommentComponent_content__] [class*=ContentComponent_content__]",
+            );
+            if (
+              !commentHtmlContainer ||
+              commentHtmlContainer.dataset.vocativeProcessed
+            ) {
+              return;
+            }
+            if (
+              commentHtmlContainer.innerHTML.match(
+                new RegExp(`^${parentCommentAuthor}[,:]`),
+              )
+            ) {
+              return;
+            }
+            const commentStartsWithMedia =
+              commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
+            if (settings.vocativeLowercase) {
+              htmlString =
+                "<span>" +
+                commentHtmlContainer.innerHTML.charAt(0).toLowerCase() +
+                commentHtmlContainer.innerHTML.slice(1) +
+                "</span>";
+              escapeHTML(commentHtmlContainer, htmlString);
+            }
+            htmlString =
+              "<span>" +
+              vocativeOpeningTags.join("") +
+              parentCommentAuthor +
+              vocativeClosingTags.join("") +
+              ((settings.vocativeSymbol ? settings.vocativeSymbol : ",") +
+                " ") +
+              (commentStartsWithMedia ? "<br/>" : "") +
+              commentHtmlContainer.innerHTML +
+              "</span>";
+            commentHtmlContainer.dataset.vocativeProcessed = "1";
+            escapeHTML(commentHtmlContainer, htmlString);
+          });
+      }
+    } else {
+      currentPostAuthor = null;
     }
 
-        
-
-                
-
-
-    const targetNode = document.getElementsByTagName('html')[0];
-    const config = {attributes: false, childList: true, subtree: true};
-    let newComments = 0;
-    let previousUrl = '';
-    let lastUrl = '';
-    let count = 0;
-    const callback = function () {
-        doStuff();        
-        if (location.href !== lastUrl) {
-            count = 0;
-            lastUrl = location.href;
-        }
-        newComments = document.getElementsByClassName("isNew");
-        if (settings.newCommentsNav && newComments.length > 1) {
-            doCommentNav();
-        }
-        if (settings.userInfoPopUp) {
-            showUserInfoPopUp();
-        }
-
-        if (settings.newCommentsNav && newComments.length == 0) {
-            document.querySelector(".prevC").style.display = "none";
-            document.querySelector(".nextC").style.display = "none";
-        }
-
-        if (settings.redirectToAll) {
-            const homeLogo = document.querySelector('[class*="Topbar_left__"] a[href="/"]');
-            if (homeLogo) {
-                homeLogo.setAttribute('href', '/all');
-            }
-            if (location.href !== previousUrl) {
-                if (location.href === document.location.protocol + '//' + document.location.host + '/') {
-                    document.location.href = document.location.protocol + '//' + document.location.host + '/all';
-                    return;
+    if (
+      document.location.href.match(/\/u\/[^\/]+\/comments/) ||
+      document.location.href.match(/profile\/comments/)
+    ) {
+      if (settings.addVocativeToComments) {
+        document
+          .querySelectorAll(
+            "[class*=UserPage_userinfo__] [class*=FeedPage_feed__] [class*=CommentComponent_comment__]",
+          )
+          .forEach(function (el) {
+            let parentCommentAuthorNode = el.querySelector(
+              "[class=commentBody] [class*=SignatureComponent_signature__]",
+            );
+            if (parentCommentAuthorNode) {
+              const parentCommentAuthor =
+                parentCommentAuthorNode.getElementsByClassName("arrow");
+              if (parentCommentAuthor && parentCommentAuthor[0]) {
+                const parentCommentAuthorUsername =
+                  parentCommentAuthor[0].innerHTML;
+                const commentHtmlContainer = el.querySelector(
+                  ".commentBody [class*=CommentComponent_content__] [class*=ContentComponent_content__]",
+                );
+                if (
+                  !commentHtmlContainer ||
+                  commentHtmlContainer.dataset.vocativeProcessed
+                ) {
+                  return;
                 }
-                previousUrl = location.href;
+                if (
+                  commentHtmlContainer.innerHTML.match(
+                    new RegExp(`^${parentCommentAuthor}[,:]`),
+                  )
+                ) {
+                  return;
+                }
+                const commentStartsWithMedia =
+                  commentHtmlContainer.innerHTML.match(/^\s*(<img|<iframe)/);
+                if (settings.vocativeLowercase) {
+                  htmlString =
+                    "<span>" +
+                    commentHtmlContainer.innerHTML.charAt(0).toLowerCase() +
+                    commentHtmlContainer.innerHTML.slice(1) +
+                    "</span>";
+                  escapeHTML(commentHtmlContainer, htmlString);
+                }
+                htmlString =
+                  "<span>" +
+                  vocativeOpeningTags.join("") +
+                  parentCommentAuthorUsername +
+                  vocativeClosingTags.join("") +
+                  ((settings.vocativeSymbol ? settings.vocativeSymbol : ",") +
+                    " ") +
+                  (commentStartsWithMedia ? "<br/>" : "") +
+                  commentHtmlContainer.innerHTML +
+                  "</span>";
+                commentHtmlContainer.dataset.vocativeProcessed = "1";
+                escapeHTML(commentHtmlContainer, htmlString);
+              }
             }
-        }
-        
-    };
-    const observer = new MutationObserver(callback);
-    observer.observe(targetNode, config);     
+          });
+      }
+    }
+    if (
+      document.location.href.match(/\/u\/[^\/]+/) &&
+      !document.location.href.match(/\/u\/[^\/]+\//)
+    ) {
+      document
+        .querySelectorAll("[class*=PostComponent_controls__]")
+        .forEach(function (el) {
+          let parentProfileNode = el.querySelector(
+            "[class*=UserProfileName_profile_name__]",
+          );
+          if (
+            !parentProfileNode ||
+            parentProfileNode.dataset.userNoteProcessed
+          ) {
+            return;
+          } else {
+            var textarea = document.createElement("button");
+            var para = document.createElement("div");
+            para.appendChild(textarea);
+            textarea.innerHTML = "Создать заметку1";
+            parentProfileNode.appendChild(para);
+            parentProfileNode.dataset.userNoteProcessed = "1";
+          }
+        });
+    }
+  };
 
+  const targetNode = document.getElementsByTagName("html")[0];
+  const config = { attributes: false, childList: true, subtree: true };
+  let newComments = 0;
+  let previousUrl = "";
+  let lastUrl = "";
+  let count = 0;
+  const callback = function () {
     doStuff();
+    if (location.href !== lastUrl) {
+      count = 0;
+      lastUrl = location.href;
+    }
+    newComments = document.getElementsByClassName("isNew");
+    if (settings.newCommentsNav && newComments.length > 1) {
+      doCommentNav();
+    }
+    if (settings.userInfoPopUp) {
+      showUserInfoPopUp();
+    }
 
-    let settingsShown = false;
+    if (settings.newCommentsNav && newComments.length == 0) {
+      document.querySelector(".prevC").style.display = "none";
+      document.querySelector(".nextC").style.display = "none";
+    }
 
-    live('click', '.BO__settings button.remove-main', function (e) {
-        const stateIndicator = document.getElementById('BO__main_change_state');
-        stateIndicator.innerHTML = '';
-        try {
-            fetch(document.location.protocol + '//api.' + document.location.host + '/api/v1/site/subscribe', {
-                'headers': {
-                    'content-type': 'application/json',
-                    'x-session-id': getCookie('session')
-                },
-                'body': '{"site":"main", "main":' + !!e.target.dataset.value + '}',
-                'method': 'POST',
-                'mode': 'cors',
-                'credentials': 'omit'
-            }).then(function (response) {
-                return response.json();
-            }).then(function (responseJson) {
-                if (responseJson.result === 'success') {
-                    stateIndicator.innerHTML = 'готово';
-                }
-            }).catch(function () {
-            });
-        } catch (e) {
+    if (settings.redirectToAll) {
+      const homeLogo = document.querySelector(
+        '[class*="Topbar_left__"] a[href="/"]',
+      );
+      if (homeLogo) {
+        homeLogo.setAttribute("href", "/all");
+      }
+      if (location.href !== previousUrl) {
+        if (
+          location.href ===
+          document.location.protocol + "//" + document.location.host + "/"
+        ) {
+          document.location.href =
+            document.location.protocol + "//" + document.location.host + "/all";
+          return;
         }
-    });
+        previousUrl = location.href;
+      }
+    }
+  };
+  const observer = new MutationObserver(callback);
+  observer.observe(targetNode, config);
 
-    live('click', '.BO__settings button.save', function (e) {
-        let newSettings = {
-            hide: document.querySelector('.BO__settings textarea.usernames').value.split(/\s*,\s*/),
-            hidePosts: document.querySelector('.BO__settings textarea.posts').value.split(/\s*,\s*/),
-            hidePostsForGood: document.querySelector('[data-setting-name="hidePostsForGood"]').checked,
-            changeLayout: document.querySelector('[data-setting-name="changeLayout"]').checked,
-            redirectToAll: document.querySelector('[data-setting-name="redirectToAll"]').checked,
-            fixImages: document.querySelector('[data-setting-name="fixImages"]').checked,
-            hideCommentsRatings: document.querySelector('[data-setting-name="hideCommentsRatings"]').checked,
-            scrollToTop: document.querySelector('[data-setting-name="scrollToTop"]').checked,
-            newCommentsNav: document.querySelector('[data-setting-name="newCommentsNav"]').checked,
-            newCommentsNavPosition: document.querySelector('[data-setting-name="newCommentsNavPosition"]').value,
-            newCommentsNavPositionSide: document.querySelector('[data-setting-name="newCommentsNavPositionSide"]').value,
-            userInfoPopUp: document.querySelector('[data-setting-name="userInfoPopUp"]').checked,
-            markPostAuthor: document.querySelector('[data-setting-name="markPostAuthor"]').checked,
-            addVocativeToComments: document.querySelector('[data-setting-name="addVocativeToComments"]').checked,
-            vocativeBold: document.querySelector('[data-setting-name="vocativeBold"]').checked,
-            vocativeItalic: document.querySelector('[data-setting-name="vocativeItalic"]').checked,
-            vocativeLowercase: document.querySelector('[data-setting-name="vocativeLowercase"]').checked,
-            vocativeSymbol: document.querySelector('input[name=vocativeSymbol]:checked').getAttribute('data-setting-value'),
-            useFont: document.querySelector('select[name=useFont]').value,
-            wideContent: document.querySelector('[data-setting-name="wideContent"]').checked
-        };
-        localStorage.setItem('BO__SETTINGS', JSON.stringify(newSettings));
-        document.querySelector('.BO__settings').remove();
-        document.getElementById('root').classList.remove('BO__settings_shown');
-        settingsShown = false;
-        if (e.target.dataset.reload) {
-            document.location.reload();
-        }
-    });
+  doStuff();
 
-    live('click', '[class*=App_monster__]', function () {
-        if (!settingsShown) {
-            const settingsContainer = document.createElement('div');
-            settingsContainer.className = 'BO__settings';
-            //settingsContainer.innerHTML = `
-            htmlString = `<span>
+  let settingsShown = false;
+
+  live("click", ".BO__settings button.remove-main", function (e) {
+    const stateIndicator = document.getElementById("BO__main_change_state");
+    stateIndicator.innerHTML = "";
+    try {
+      fetch(
+        document.location.protocol +
+          "//api." +
+          document.location.host +
+          "/api/v1/site/subscribe",
+        {
+          headers: {
+            "content-type": "application/json",
+            "x-session-id": getCookie("session"),
+          },
+          body: '{"site":"main", "main":' + !!e.target.dataset.value + "}",
+          method: "POST",
+          mode: "cors",
+          credentials: "omit",
+        },
+      )
+        .then(function (response) {
+          return response.json();
+        })
+        .then(function (responseJson) {
+          if (responseJson.result === "success") {
+            stateIndicator.innerHTML = "готово";
+          }
+        })
+        .catch(function () {});
+    } catch (e) {}
+  });
+
+  live("click", ".BO__settings button.save", function (e) {
+    let newSettings = {
+      hide: document
+        .querySelector(".BO__settings textarea.usernames")
+        .value.split(/\s*,\s*/),
+      hidePosts: document
+        .querySelector(".BO__settings textarea.posts")
+        .value.split(/\s*,\s*/),
+      hidePostsForGood: document.querySelector(
+        '[data-setting-name="hidePostsForGood"]',
+      ).checked,
+      changeLayout: document.querySelector('[data-setting-name="changeLayout"]')
+        .checked,
+      redirectToAll: document.querySelector(
+        '[data-setting-name="redirectToAll"]',
+      ).checked,
+      fixImages: document.querySelector('[data-setting-name="fixImages"]')
+        .checked,
+      hideCommentsRatings: document.querySelector(
+        '[data-setting-name="hideCommentsRatings"]',
+      ).checked,
+      scrollToTop: document.querySelector('[data-setting-name="scrollToTop"]')
+        .checked,
+      newCommentsNav: document.querySelector(
+        '[data-setting-name="newCommentsNav"]',
+      ).checked,
+      newCommentsNavPosition: document.querySelector(
+        '[data-setting-name="newCommentsNavPosition"]',
+      ).value,
+      newCommentsNavPositionSide: document.querySelector(
+        '[data-setting-name="newCommentsNavPositionSide"]',
+      ).value,
+      userInfoPopUp: document.querySelector(
+        '[data-setting-name="userInfoPopUp"]',
+      ).checked,
+      markPostAuthor: document.querySelector(
+        '[data-setting-name="markPostAuthor"]',
+      ).checked,
+      addVocativeToComments: document.querySelector(
+        '[data-setting-name="addVocativeToComments"]',
+      ).checked,
+      vocativeBold: document.querySelector('[data-setting-name="vocativeBold"]')
+        .checked,
+      vocativeItalic: document.querySelector(
+        '[data-setting-name="vocativeItalic"]',
+      ).checked,
+      vocativeLowercase: document.querySelector(
+        '[data-setting-name="vocativeLowercase"]',
+      ).checked,
+      vocativeSymbol: document
+        .querySelector("input[name=vocativeSymbol]:checked")
+        .getAttribute("data-setting-value"),
+      useFont: document.querySelector("select[name=useFont]").value,
+      wideContent: document.querySelector('[data-setting-name="wideContent"]')
+        .checked,
+    };
+    localStorage.setItem("BO__SETTINGS", JSON.stringify(newSettings));
+    document.querySelector(".BO__settings").remove();
+    document.getElementById("root").classList.remove("BO__settings_shown");
+    settingsShown = false;
+    if (e.target.dataset.reload) {
+      document.location.reload();
+    }
+  });
+
+  live("click", "[class*=App_monster__]", function () {
+    if (!settingsShown) {
+      const settingsContainer = document.createElement("div");
+      settingsContainer.className = "BO__settings";
+      htmlString =
+        `<span>
         <div style="overflow: auto; padding-bottom: 60px;">
         <div class="row">
         <div class="column">
          <hr/>
           <div>
               <h2>Прятать пользователей (юзернеймы через запятую):</h2>
-              <textarea class="usernames">` + (getHidingUsernames().join(', ')) + `</textarea>
+              <textarea class="usernames">` +
+        getHidingUsernames().join(", ") +
+        `</textarea>
           </div>
           <hr/>
           <div>
               <h2>Прятать посты (id постов или названия сайтов через запятую):</h2>
-              <textarea class="posts">` + (getHidingPosts().join(', ')) + `</textarea>
+              <textarea class="posts">` +
+        getHidingPosts().join(", ") +
+        `</textarea>
               <div style="margin-bottom: 10px;">
-                  <label><input type="checkbox" data-setting-name="hidePostsForGood" ` + (settings.hidePostsForGood ? 'checked="1"' : '') + ` /> - прятать посты насовсем (если выключено, в ленте будут ссылки на скрытые посты)</label>
+                  <label><input type="checkbox" data-setting-name="hidePostsForGood" ` +
+        (settings.hidePostsForGood ? 'checked="1"' : "") +
+        ` /> - прятать посты насовсем (если выключено, в ленте будут ссылки на скрытые посты)</label>
               </div>
           </div>
           </div>
@@ -539,51 +658,91 @@
           <hr/>
           <div class="BO_settings_checkboxes">
               <div>
-                  <label><input type="checkbox" data-setting-name="redirectToAll" ` + (settings.redirectToAll ? 'checked="1"' : '') + ` /> - редиректить ленту на /all (все посты)</label>
+                  <label><input type="checkbox" data-setting-name="redirectToAll" ` +
+        (settings.redirectToAll ? 'checked="1"' : "") +
+        ` /> - редиректить ленту на /all (все посты)</label>
               </div>
               <div>
-                  <label><input type="checkbox" data-setting-name="changeLayout" ` + (settings.changeLayout ? 'checked="1"' : '') + ` /> - менять стили</label>
+                  <label><input type="checkbox" data-setting-name="changeLayout" ` +
+        (settings.changeLayout ? 'checked="1"' : "") +
+        ` /> - менять стили</label>
               </div>
               <div>
-                  <label>&nbsp;&nbsp;&nbsp;&nbsp;<input type="checkbox" data-setting-name="fixImages" ` + (settings.fixImages ? 'checked="1"' : '') + ` /> - исправлять висячие картинки и видео</label>
+                  <label>&nbsp;&nbsp;&nbsp;&nbsp;<input type="checkbox" data-setting-name="fixImages" ` +
+        (settings.fixImages ? 'checked="1"' : "") +
+        ` /> - исправлять висячие картинки и видео</label>
               </div>
               <div>
-                  <label><input type="checkbox"  data-setting-name="hideCommentsRatings" ` + (settings.hideCommentsRatings ? 'checked="1"' : '') + ` /> - прятать рейтинг комментов</label>
+                  <label><input type="checkbox"  data-setting-name="hideCommentsRatings" ` +
+        (settings.hideCommentsRatings ? 'checked="1"' : "") +
+        ` /> - прятать рейтинг комментов</label>
               </div>
               <div>
-                  <label><input type="checkbox" data-setting-name="wideContent" ` + (settings.wideContent ? 'checked="1"' : '') + ` /> - сделать контент пошире</label>
+                  <label><input type="checkbox" data-setting-name="wideContent" ` +
+        (settings.wideContent ? 'checked="1"' : "") +
+        ` /> - сделать контент пошире</label>
               </div>
               <div>
-                  <label><input type="checkbox" data-setting-name="addVocativeToComments" ` + (settings.addVocativeToComments ? 'checked="1"' : '') + ` /> - добавлять обращение в комменты</label>
+                  <label><input type="checkbox" data-setting-name="addVocativeToComments" ` +
+        (settings.addVocativeToComments ? 'checked="1"' : "") +
+        ` /> - добавлять обращение в комменты</label>
               </div>
               <div>
-                  <label>&nbsp;&nbsp;&nbsp;&nbsp;<input type="checkbox" data-setting-name="vocativeBold" ` + (settings.vocativeBold ? 'checked="1"' : '') + ` /> - выделять обращение <b>жирным</b></label>
+                  <label>&nbsp;&nbsp;&nbsp;&nbsp;<input type="checkbox" data-setting-name="vocativeBold" ` +
+        (settings.vocativeBold ? 'checked="1"' : "") +
+        ` /> - выделять обращение <b>жирным</b></label>
               </div>
               <div>
-                  <label>&nbsp;&nbsp;&nbsp;&nbsp;<input type="checkbox" data-setting-name="vocativeItalic" ` + (settings.vocativeItalic ? 'checked="1"' : '') + ` /> - выделять обращение <i>курсивом</i></label>
+                  <label>&nbsp;&nbsp;&nbsp;&nbsp;<input type="checkbox" data-setting-name="vocativeItalic" ` +
+        (settings.vocativeItalic ? 'checked="1"' : "") +
+        ` /> - выделять обращение <i>курсивом</i></label>
               </div>
               <div>
-                  <label>&nbsp;&nbsp;&nbsp;&nbsp;<input type="checkbox" data-setting-name="vocativeLowercase" ` + (settings.vocativeLowercase ? 'checked="1"' : '') + ` /> - уменьшать первую букву после обращения</label>
+                  <label>&nbsp;&nbsp;&nbsp;&nbsp;<input type="checkbox" data-setting-name="vocativeLowercase" ` +
+        (settings.vocativeLowercase ? 'checked="1"' : "") +
+        ` /> - уменьшать первую букву после обращения</label>
               </div>
               <div>
-                  <label>&nbsp;&nbsp;&nbsp;&nbsp;<input name="vocativeSymbol" type="radio" data-setting-name="vocativeSymbol" data-setting-value="," ` + (settings.vocativeSymbol === ',' || !settings.vocativeSymbol ? 'checked="1"' : '') + ` /> - отделять обращение запятой</label>
+                  <label>&nbsp;&nbsp;&nbsp;&nbsp;<input name="vocativeSymbol" type="radio" data-setting-name="vocativeSymbol" data-setting-value="," ` +
+        (settings.vocativeSymbol === "," || !settings.vocativeSymbol
+          ? 'checked="1"'
+          : "") +
+        ` /> - отделять обращение запятой</label>
               </div>
               <div>
-                  <label>&nbsp;&nbsp;&nbsp;&nbsp;<input name="vocativeSymbol" type="radio" data-setting-name="vocativeSymbol" data-setting-value=":" ` + (settings.vocativeSymbol === ':' ? 'checked="1"' : '') + ` /> - отделять обращение двоеточием</label>
+                  <label>&nbsp;&nbsp;&nbsp;&nbsp;<input name="vocativeSymbol" type="radio" data-setting-name="vocativeSymbol" data-setting-value=":" ` +
+        (settings.vocativeSymbol === ":" ? 'checked="1"' : "") +
+        ` /> - отделять обращение двоеточием</label>
               </div>
               <div>
-                  <label><input type="checkbox" data-setting-name="scrollToTop" ` + (settings.scrollToTop ? 'checked="1"' : '') + ` /> - показывать кнопку "Наверх"</label>
+                  <label><input type="checkbox" data-setting-name="scrollToTop" ` +
+        (settings.scrollToTop ? 'checked="1"' : "") +
+        ` /> - показывать кнопку "Наверх"</label>
               </div>
               <div>
-                  <label><input type="checkbox" data-setting-name="newCommentsNav" ` + (settings.newCommentsNav ? 'checked="1"' : '') + ` /> - показывать кнопки навигации по новым комментам</label>
-                  <label><input type="text" maxlength="4" size="4" data-setting-name="newCommentsNavPosition" value="` + (settings.newCommentsNavPosition ? settings.newCommentsNavPosition : 100) + `" />px - позиция кнопок навигации по новым комментам<br /></label>
-<label>Кнопки навигации по новым комментам<select name="newCommentsNavPositionSide" data-setting-name="newCommentsNavPositionSide"><option value="right" ` + (settings.newCommentsNavPositionSide === 'right' ? 'selected' : '') + ` >справа</option><option value="left" ` + (settings.newCommentsNavPositionSide === 'left' ? 'selected' : '') + `>слева</option></select></label>
+                  <label><input type="checkbox" data-setting-name="newCommentsNav" ` +
+        (settings.newCommentsNav ? 'checked="1"' : "") +
+        ` /> - показывать кнопки навигации по новым комментам</label>
+                  <label><input type="text" maxlength="4" size="4" data-setting-name="newCommentsNavPosition" value="` +
+        (settings.newCommentsNavPosition
+          ? settings.newCommentsNavPosition
+          : 100) +
+        `" />px - позиция кнопок навигации по новым комментам<br /></label>
+<label>Кнопки навигации по новым комментам<select name="newCommentsNavPositionSide" data-setting-name="newCommentsNavPositionSide"><option value="right" ` +
+        (settings.newCommentsNavPositionSide === "right" ? "selected" : "") +
+        ` >справа</option><option value="left" ` +
+        (settings.newCommentsNavPositionSide === "left" ? "selected" : "") +
+        `>слева</option></select></label>
               </div>
               <div>
-                  <label><input type="checkbox" data-setting-name="userInfoPopUp" ` + (settings.userInfoPopUp ? 'checked="1"' : '') + ` /> - показывать подсказку с информацией юзернейма</label>
+                  <label><input type="checkbox" data-setting-name="userInfoPopUp" ` +
+        (settings.userInfoPopUp ? 'checked="1"' : "") +
+        ` /> - показывать подсказку с информацией юзернейма</label>
               </div>
                 <div>
-                  <label><input type="checkbox" data-setting-name="markPostAuthor" ` + (settings.markPostAuthor ? 'checked="1"' : '') + ` /> - выделять юзернейм автора поста в комментах</label>
+                  <label><input type="checkbox" data-setting-name="markPostAuthor" ` +
+        (settings.markPostAuthor ? 'checked="1"' : "") +
+        ` /> - выделять юзернейм автора поста в комментах</label>
               </div>
           </div>
           </div>
@@ -621,126 +780,124 @@
               </div>
           </div></span>
         `;
-            escapeHTML(settingsContainer, htmlString);
+      escapeHTML(settingsContainer, htmlString);
 
-            document.getElementsByTagName('body')[0].appendChild(settingsContainer);
-            settingsShown = true;
-            document.getElementById('BO__settings_font').value = settings.useFont;
-            document.getElementById('root').classList.add('BO__settings_shown');
-        } else {
-            settingsShown = false;
-            if (document.querySelector('.BO__settings')) {
-                document.querySelector('.BO__settings').remove();
-            }
-            document.getElementById('root').classList.remove('BO__settings_shown');
-        }
-    });
+      document.getElementsByTagName("body")[0].appendChild(settingsContainer);
+      settingsShown = true;
+      document.getElementById("BO__settings_font").value = settings.useFont;
+      document.getElementById("root").classList.add("BO__settings_shown");
+    } else {
+      settingsShown = false;
+      if (document.querySelector(".BO__settings")) {
+        document.querySelector(".BO__settings").remove();
+      }
+      document.getElementById("root").classList.remove("BO__settings_shown");
+    }
+  });
 
-    live('click', '.BO__hide-post', function (e) {
-        const settings = getSettings();
-        let hidePosts = settings.hidePosts;
-        if (!hidePosts || (hidePosts.length === 1 && hidePosts[0] === '')) {
-            hidePosts = [];
-        }
-        const postId = e.target.dataset.postId;
-        if (postId && !hidePosts.includes(postId)) {
-            hidePosts.push(postId);
-            settings.hidePosts = hidePosts;
-            localStorage.setItem('BO__SETTINGS', JSON.stringify(settings));
-        }
-        const post = e.target.parentNode.parentNode.parentNode;
-        const user = e.target.dataset.postAuthor;
-        if (post) {
-            doHidePost(post, user);
-        }
-    });
+  live("click", ".BO__hide-post", function (e) {
+    const settings = getSettings();
+    let hidePosts = settings.hidePosts;
+    if (!hidePosts || (hidePosts.length === 1 && hidePosts[0] === "")) {
+      hidePosts = [];
+    }
+    const postId = e.target.dataset.postId;
+    if (postId && !hidePosts.includes(postId)) {
+      hidePosts.push(postId);
+      settings.hidePosts = hidePosts;
+      localStorage.setItem("BO__SETTINGS", JSON.stringify(settings));
+    }
+    const post = e.target.parentNode.parentNode.parentNode;
+    const user = e.target.dataset.postAuthor;
+    if (post) {
+      doHidePost(post, user);
+    }
+  });
 
-    live('click', '.BO__hide-site', function (e) {
-        const settings = getSettings();
-        let hidePosts = settings.hidePosts;
-        if (!hidePosts || (hidePosts.length === 1 && hidePosts[0] === '')) {
-            hidePosts = [];
-        }
-        const siteId = e.target.dataset.postSite;
-        if (siteId && !hidePosts.includes(siteId)) {
-            hidePosts.push(siteId);
-            settings.hidePosts = hidePosts;
-            localStorage.setItem('BO__SETTINGS', JSON.stringify(settings));
-        }
-    });
+  live("click", ".BO__hide-site", function (e) {
+    const settings = getSettings();
+    let hidePosts = settings.hidePosts;
+    if (!hidePosts || (hidePosts.length === 1 && hidePosts[0] === "")) {
+      hidePosts = [];
+    }
+    const siteId = e.target.dataset.postSite;
+    if (siteId && !hidePosts.includes(siteId)) {
+      hidePosts.push(siteId);
+      settings.hidePosts = hidePosts;
+      localStorage.setItem("BO__SETTINGS", JSON.stringify(settings));
+    }
+  });
 
-    live('click', '.BO__hide-username', function (e) {
-        const settings = getSettings();
-        let hideUsernames = settings.hide;
-        if (!hideUsernames || (hideUsernames.length === 1 && hideUsernames[0] === '')) {
-            hideUsernames = [];
-        }
-        const username = e.target.dataset.postAuthor;
-        if (username && !hidePosts.includes(username)) {
-            hideUsernames.push(username);
-            settings.hide = hideUsernames;
-            localStorage.setItem('BO__SETTINGS', JSON.stringify(settings));
-        }
-    });
+  live("click", ".BO__hide-username", function (e) {
+    const settings = getSettings();
+    let hideUsernames = settings.hide;
+    if (
+      !hideUsernames ||
+      (hideUsernames.length === 1 && hideUsernames[0] === "")
+    ) {
+      hideUsernames = [];
+    }
+    const username = e.target.dataset.postAuthor;
+    if (username && !hidePosts.includes(username)) {
+      hideUsernames.push(username);
+      settings.hide = hideUsernames;
+      localStorage.setItem("BO__SETTINGS", JSON.stringify(settings));
+    }
+  });
 
-    live('click', '.BO__hidden_post span', function (e) {
-        const post = e.target.parentNode;
-        if (!post) {
-            return;
-        }
-        post.classList.remove('BO__hidden_post');
-        htmlString = '<span>' + post.dataset.originalContent + '</span>';
-        //post.innerHTML = post.dataset.originalContent;
-        escapeHTML(post, htmlString);
-    });
+  live("click", ".BO__hidden_post span", function (e) {
+    const post = e.target.parentNode;
+    if (!post) {
+      return;
+    }
+    post.classList.remove("BO__hidden_post");
+    htmlString = "<span>" + post.dataset.originalContent + "</span>";
+    escapeHTML(post, htmlString);
+  });
 
-    live('click', '.BO__settings button.export', function (e) {
-        // Get the "BO_SETTINGS" item from local storage
-        var boSettings = localStorage.getItem("BO__SETTINGS");
+  live("click", ".BO__settings button.export", function (e) {
+    var boSettings = localStorage.getItem("BO__SETTINGS");
 
-        if (boSettings) {
-            // Create a Blob with the content of the item
-            var blob = new Blob([boSettings], {type: 'text/csv'});
+    if (boSettings) {
+      var blob = new Blob([boSettings], { type: "text/csv" });
 
-            // Create a temporary anchor element
-            var a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
 
-            // Set the filename for the download
-            a.download = 'orbitar.csv';
+      a.download = "orbitar.csv";
 
-            // Append the anchor to the body and trigger the download
-            document.body.appendChild(a);
-            a.click();
+      document.body.appendChild(a);
+      a.click();
 
-            // Clean up
-            document.body.removeChild(a);
-        } else {
-            console.error("No 'BO__SETTINGS' item found in local storage.");
-        }
-    });
+      document.body.removeChild(a);
+    } else {
+      console.error("No 'BO__SETTINGS' item found in local storage.");
+    }
+  });
 
-    live('change', '.BO__settings input.import', function (e) {
-        var reader = new FileReader();
+  live("change", ".BO__settings input.import", function (e) {
+    var reader = new FileReader();
 
-        reader.onload = function (event) {
-            var csvData = event.target.result;
+    reader.onload = function (event) {
+      var csvData = event.target.result;
 
-            localStorage.setItem("BO__SETTINGS", csvData);
+      localStorage.setItem("BO__SETTINGS", csvData);
 
-            console.log("Data imported from CSV to local storage successfully.");
-        };
+      console.log("Data imported from CSV to local storage successfully.");
+    };
 
-        reader.readAsText(e.target.files[0]);
-    });
+    reader.readAsText(e.target.files[0]);
+  });
 
-    const layoutChangeCss = (settings.useFont ? `
+  const layoutChangeCss =
+    (settings.useFont
+      ? `
       * {
         font-family: "${settings.useFont}" !important;
       }
-      ` : ``)
-        +
-        `
+      `
+      : ``) +
+    `
       div[class*=Topbar_topbar__] {
           --background-color: var(--bg);
       }
@@ -777,7 +934,9 @@
           flex-direction: row-reverse;
           font-size: 14px !important;
           margin-top: -4px;
-          visibility: ` + (settings.hideCommentsRatings ? 'hidden' : '') + `;
+          visibility: ` +
+    (settings.hideCommentsRatings ? "hidden" : "") +
+    `;
           margin-bottom: -10px;
       }
       [class*="CommentComponent_comment__"] [class*="CommentComponent_controls__"] [class*="CommentComponent_control__"] {
@@ -832,7 +991,9 @@
       [class*="SignatureComponent_signature__"] {
           margin-bottom: -4px;
       }
-      ` + (settings.fixImages ? `
+      ` +
+    (settings.fixImages
+      ? `
       [class*="ContentComponent_content__"] img,
       [class*="ContentComponent_content__"] iframe,
       [class*="ContentComponent_content__"] video
@@ -844,9 +1005,10 @@
       .BO_editing_comment {
           flex-direction: column;
       }
-      ` : '');
+      `
+      : "");
 
-    const settingsCss = `
+  const settingsCss = `
       [class*=App_monster__] {
           cursor: pointer;
           z-index: 1000;
@@ -919,7 +1081,7 @@
       }
     `;
 
-    const hiddenCss = `
+  const hiddenCss = `
       .BO__hidden_comment.commentBody {
           position: relative;
           outline: 1px solid var(--danger);
@@ -983,7 +1145,7 @@
       }
     `;
 
-    const wideContentCss = `
+  const wideContentCss = `
         @media (min-width: 800px) {
         div[class*=App_container__] {
             width: calc(100% - 20px);
@@ -1000,7 +1162,7 @@
         }
     `;
 
-    const vocativesCss = `
+  const vocativesCss = `
        div.commentBody div[class*=SignatureComponent_signature__] a.arrow.i.i-arrow {
            visibility: hidden;
            width: 10px;
@@ -1010,7 +1172,7 @@
        }
     `;
 
-    const scrollToTopCss = `
+  const scrollToTopCss = `
         .scrollToTop {
         width: 40px;
         height: 40px;
@@ -1040,7 +1202,8 @@
         }
         `;
 
-    const newCommentsNavCss = `
+  const newCommentsNavCss =
+    `
         .commentBody{
             padding: 7px;
             scroll-margin-top: 80px;
@@ -1058,11 +1221,19 @@
         color: DimGray;
         text-decoration: none;
         position: fixed;
-        bottom: ` + (parseInt(settings.newCommentsNavPosition) + 50) + `px; 
-        ` + (settings.newCommentsNavPositionSide === 'right' ? 'right: 0;' : 'left: 0;')+ `
-        border-top-` + (settings.newCommentsNavPositionSide === 'right' ? 'left' : 'right') + `-radius: 8px;
+        bottom: ` +
+    (parseInt(settings.newCommentsNavPosition) + 50) +
+    `px;
+        ` +
+    (settings.newCommentsNavPositionSide === "right"
+      ? "right: 0;"
+      : "left: 0;") +
+    `
+        border-top-` +
+    (settings.newCommentsNavPositionSide === "right" ? "left" : "right") +
+    `-radius: 8px;
         display: none;
-        border: 1px solid grey;        
+        border: 1px solid grey;
         box-shadow: 0 0 3px grey;
         transition: opacity 250ms ease-out;
         opacity: .5;
@@ -1085,11 +1256,19 @@
             color: DimGray;
             text-decoration: none;
             position: fixed;
-            bottom: ` + settings.newCommentsNavPosition + `px;
-            ` + (settings.newCommentsNavPositionSide === 'right' ? 'right: 0;' : 'left: 0;') + `
-            border-bottom-` + (settings.newCommentsNavPositionSide === 'right' ? 'left' : 'right') + `-radius: 8px;
+            bottom: ` +
+    settings.newCommentsNavPosition +
+    `px;
+            ` +
+    (settings.newCommentsNavPositionSide === "right"
+      ? "right: 0;"
+      : "left: 0;") +
+    `
+            border-bottom-` +
+    (settings.newCommentsNavPositionSide === "right" ? "left" : "right") +
+    `-radius: 8px;
             display: none;
-            border: 1px solid grey;            
+            border: 1px solid grey;
             box-shadow: 0 0 3px grey;
             transition: opacity 250ms ease-out;
             opacity: .5;
@@ -1102,408 +1281,363 @@
             }
         `;
 
-    const postAuthorCss = `        
+  const postAuthorCss = `
         .author-comment {
         font-weight: bold !important;
-        }        
+        }
         `;
 
+  const css =
+    hiddenCss +
+    "\n" +
+    settingsCss +
+    "\n" +
+    (settings.changeLayout ? layoutChangeCss : "") +
+    "\n" +
+    (settings.wideContent ? wideContentCss : "") +
+    "\n" +
+    (settings.addVocativeToComments ? vocativesCss : "") +
+    "\n" +
+    (settings.scrollToTop ? scrollToTopCss : "") +
+    "\n" +
+    (settings.newCommentsNav ? newCommentsNavCss : "") +
+    "\n" +
+    (settings.markPostAuthor ? postAuthorCss : "") +
+    "\n";
 
+  const head = document.head || document.getElementsByTagName("head")[0];
+  const style = document.createElement("style");
+  head.appendChild(style);
 
-    const css = hiddenCss + '\n' + settingsCss + '\n' +
-        (settings.changeLayout ? layoutChangeCss : '') + '\n' +
-        (settings.wideContent ? wideContentCss : '') + '\n' +
-        (settings.addVocativeToComments ? vocativesCss : '') + '\n' +
-        (settings.scrollToTop ? scrollToTopCss : '') + '\n' +
-        (settings.newCommentsNav ? newCommentsNavCss : '') + '\n' +
-        (settings.markPostAuthor ? postAuthorCss : '') + '\n';
+  style.setAttribute("type", "text/css");
+  style.appendChild(document.createTextNode(css));
 
+  if (settings.useFont) {
+    const link = document.createElement("link");
+    link.setAttribute(
+      "href",
+      "https://fonts.googleapis.com/css?family=" + settings.useFont,
+    );
+    link.setAttribute("rel", "stylesheet");
+    head.appendChild(link);
+  }
 
-    const head = document.head || document.getElementsByTagName('head')[0];
-    const style = document.createElement('style');
-    head.appendChild(style);
+  //Scrol to top functions
+  var timeoutID;
 
-    style.setAttribute('type', 'text/css');
-    style.appendChild(document.createTextNode(css));
+  function scrollToTop() {
+    var scrolled = window.scrollY || document.documentElement.scrollTop;
+    var ch = document.documentElement.clientHeight;
+    if (scrolled === 0) {
+      clearTimeout(timeoutID);
+      timeoutID = null;
+      return;
+    } else if (scrolled < ch) {
+      window.scrollTo(0, parseInt(scrolled / 1.3));
+    } else if (scrolled < ch * 3) {
+      window.scrollTo(0, parseInt(scrolled / 1.5));
+    } else {
+      window.scrollTo(0, parseInt(scrolled / 2));
+    }
+    timeoutID = setTimeout(scrollToTop, 15);
+  }
 
-    if (settings.useFont) {
-        const link = document.createElement('link');
-        link.setAttribute('href', 'https://fonts.googleapis.com/css?family=' + settings.useFont);
-        link.setAttribute('rel', 'stylesheet');
-        head.appendChild(link);
+  function onClick(event) {
+    if (typeof timeoutID == "number") return;
+    scrollToTop();
+  }
+
+  function toggleScrollToTop() {
+    var scrolled = window.scrollY || document.documentElement.scrollTop;
+    var ch = document.documentElement.clientHeight;
+    var elm = document.querySelector(".scrollToTop");
+    if (scrolled > ch / 1.1) {
+      elm.style.cssText = "display: block;";
+    } else {
+      elm.style.cssText = "display: none;";
+    }
+  }
+
+  if (settings.scrollToTop) {
+    window.onscroll = toggleScrollToTop;
+
+    window.onwheel = function () {
+      if (typeof timeoutID != "number") return;
+      clearTimeout(timeoutID);
+      timeoutID = null;
+    };
+
+    var div = document.createElement("div");
+    div.className = "scrollToTop";
+    div.textContent = "🔝";
+    div.onclick = onClick;
+    document.body.appendChild(div);
+    toggleScrollToTop();
+  }
+
+  //New Comment navigation
+
+  function onPrev(event) {
+    if (count > 0) {
+      count--;
+      var element = newComments[count];
+      if (count != newComments.length) {
+        newComments[count + 1].childNodes[0].style.border = "none";
+      }
+      element.childNodes[0].style.border = "1px solid Gray";
+      element.childNodes[0].scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+    if (count < newComments.length) {
+      document.querySelector(".nextC").style.display = "block";
+    }
+    if (count == 0) {
+      document.querySelector(".prevC").style.display = "none";
+    }
+  }
+
+  function onNext(event) {
+    if (count >= 0 && count < newComments.length - 1) {
+      count++;
+      var element = newComments[count];
+      newComments[count - 1].childNodes[0].style.border = "none";
+      element.childNodes[0].style.border = "1px solid Gray";
+      element.childNodes[0].scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+    if (count > 0) {
+      document.querySelector(".prevC").style.display = "block";
+    }
+    if (count == newComments.length - 1) {
+      document.querySelector(".nextC").style.display = "none";
+    }
+  }
+
+  function doCommentNav() {
+    if (newComments.length > 0) {
+      newComments[0].childNodes[0].style.border = "1px solid Gray";
+    }
+    if (newComments.length > 1 && settings.newCommentsNav) {
+      document.querySelector(".nextC").style.display = "block";
+    }
+  }
+
+  function doc_keyUp(e) {
+    var activeElement = document.activeElement;
+    if (activeElement.type != "textarea") {
+      if (e.code === "KeyJ") {
+        onNext();
+      }
+
+      if (e.code === "KeyK") {
+        onPrev();
+      }
+    }
+  }
+
+  if (settings.newCommentsNav) {
+    var prev = document.createElement("div");
+    prev.className = "prevC";
+    prev.textContent = "⬆️";
+    prev.onclick = onPrev;
+    document.body.appendChild(prev);
+
+    var next = document.createElement("div");
+    next.className = "nextC";
+    next.textContent = "⬇️";
+    next.onclick = onNext;
+    document.body.appendChild(next);
+
+    document.addEventListener("keyup", doc_keyUp, false);
+  }
+
+  async function getUserData(uprofile) {
+    try {
+      const url = "https://api.orbitar.space/api/v1/user/profile";
+      const profile = new URL(uprofile);
+      const data = JSON.stringify({
+        username: decodeURI(profile.pathname.slice(3)),
+      });
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-type": "application/json; charset=utf-8",
+          "x-session-id": getCookie("session"),
+        },
+        body: data,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const jsonResponse = await response.json();
+      return jsonResponse;
+    } catch (error) {
+      console.error("An error occurred:", error);
+    }
+  }
+
+  function detectColorTheme() {
+    try {
+      const parsedValue = JSON.parse(localStorage.getItem("theme"));
+      return parsedValue.theme;
+    } catch (e) {
+      console.error("Error parsing JSON from local storage:", e);
+    }
+  }
+
+  function createPopup(content) {
+    const theme = detectColorTheme();
+    const popup = document.createElement("div");
+
+    popup.innerHTML =
+      `<div>` +
+      content.payload.profile.username +
+      `</div>
+            <div>Пол: ` +
+      convertGender(content.payload.profile.gender) +
+      `</div>
+            <div>Имя: ` +
+      content.payload.profile.name +
+      `</div>
+            <div>` +
+      invitedBy(content.payload.profile.gender) +
+      content.payload.invitedBy.username +
+      `</div>
+            <div>#` +
+      content.payload.profile.id +
+      `</div>
+            <div>` +
+      registered(content.payload.profile.gender) +
+      formatIsoDateString(content.payload.profile.registered) +
+      `</div>
+            <div>Карма ` +
+      formatWithSign(content.payload.profile.karma) +
+      `</div>
+            <div>От меня в карме ` +
+      formatWithSign(content.payload.profile.vote) +
+      `</div>`;
+
+    popup.style.position = "absolute";
+    popup.style.padding = "8px";
+    popup.style.border = "1px solid";
+    popup.style.borderRadius = "4px";
+    popup.style.zIndex = "1000";
+    popup.style.display = "none";
+
+    if (theme === "dark") {
+      popup.style.background = "#333";
+      popup.style.color = "#fff";
+      popup.style.border = "1px solid #555";
+    } else {
+      popup.style.background = "#fff";
+      popup.style.color = "#000";
+      popup.style.border = "1px solid #ddd";
     }
 
-    //Scrol to top functions
-    var timeoutID;
+    document.body.appendChild(popup);
 
-    function scrollToTop() {
-        var scrolled = window.scrollY || document.documentElement.scrollTop;
-        var ch = document.documentElement.clientHeight;
-        if (scrolled === 0) {
-            clearTimeout(timeoutID);
-            timeoutID = null;
-            return;
-        }
-        else if (scrolled < ch) {
-            window.scrollTo(0, parseInt(scrolled / 1.3));
-        }
-        else if (scrolled < ch * 3) {
-            window.scrollTo(0, parseInt(scrolled / 1.5));
-        }
-        else {
-            window.scrollTo(0, parseInt(scrolled / 2));
-        }
-        timeoutID = setTimeout(scrollToTop, 15);
-    }
+    return popup;
+  }
 
-    function onClick(event) {
-        if (typeof timeoutID == 'number')
-            return;
-        scrollToTop();
-    }
+  function formatIsoDateString(isoString) {
+    const date = new Date(isoString);
+    let day = date.getDate().toString().padStart(2, "0");
+    let month = (date.getMonth() + 1).toString().padStart(2, "0");
+    let year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
 
-    function toggleScrollToTop() {
-        var scrolled = window.scrollY || document.documentElement.scrollTop;
-        var ch = document.documentElement.clientHeight;
-        var elm = document.querySelector('.scrollToTop');
-        if (scrolled > ch / 1.1) {
-            elm.style.cssText = 'display: block;';
-        }
-        else {
-            elm.style.cssText = 'display: none;';
-        }
-    }
+  function formatWithSign(number) {
+    return number > 0 ? `+${number}` : number.toString();
+  }
 
-    if (settings.scrollToTop) {
-        window.onscroll = toggleScrollToTop;
+  function invitedBy(genderId) {
+    return genderId == 2 ? `Приглашена ` : `Приглашён `;
+  }
 
-        window.onwheel = function () {
-            if (typeof timeoutID != 'number')
-                return;
-            clearTimeout(timeoutID);
-            timeoutID = null;
+  function registered(genderId) {
+    return genderId == 2 ? `Зарегистрирована ` : `Зарегистрирован `;
+  }
+
+  function convertGender(genderId) {
+    const genderMap = {
+      1: "мужчина",
+      2: "женщина",
+      0: "не указан",
+    };
+
+    return genderMap[genderId] || "не указан";
+  }
+  function showPopupOnHover(link, content) {
+    const popup = createPopup(content);
+
+    const rect = link.getBoundingClientRect();
+    popup.style.display = "block";
+    popup.style.top = `${rect.bottom + window.scrollY}px`;
+    popup.style.left = `${rect.left + window.scrollX}px`;
+
+    link.addEventListener("mouseout", function () {
+      popup.style.display = "none";
+    });
+    addEventListener("click", function () {
+      popup.style.display = "none";
+    });
+  }
+
+  function showUserInfoPopUp() {
+    var list = document.getElementsByClassName("i-user");
+    for (var i = 0; i < list.length; i++) {
+      (function (item) {
+        var hoverTimeout;
+        item.onmouseover = function () {
+          var link = this;
+          clearTimeout(hoverTimeout);
+          hoverTimeout = setTimeout(function () {
+            getUserData(link.href).then(function (value) {
+              showPopupOnHover(link, value);
+            });
+          }, 500);
         };
 
-        var div = document.createElement('div');
-        div.className = 'scrollToTop';
-        div.textContent = '🔝';
-        div.onclick = onClick;
-        document.body.appendChild(div);
-        toggleScrollToTop();
-    }
-
-    //New Comment navigation
-
-    function onPrev(event) {
-        if (count > 0) {
-            count--;
-            var element = newComments[count];
-            if (count != newComments.length) {
-                newComments[count + 1].childNodes[0].style.border = "none";
-            }
-            element.childNodes[0].style.border = "1px solid Gray";
-            element.childNodes[0].scrollIntoView({behavior: 'smooth', block: 'start'});
-        }
-        if (count < newComments.length) {
-            document.querySelector(".nextC").style.display = "block";
-        }
-        if (count == 0) {
-            document.querySelector(".prevC").style.display = "none";
-        }
-    }
-
-    function onNext(event) {
-        if (count >= 0 && count < (newComments.length - 1)) {
-            count++;
-            var element = newComments[count];
-            newComments[count - 1].childNodes[0].style.border = "none";
-            element.childNodes[0].style.border = "1px solid Gray";
-            element.childNodes[0].scrollIntoView({behavior: 'smooth', block: 'start'});
-        }
-        if (count > 0) {
-            document.querySelector(".prevC").style.display = "block";
-        }
-        if (count == newComments.length - 1) {
-            document.querySelector(".nextC").style.display = "none";
-        }
-    }
-
-    function doCommentNav() {
-
-        if (newComments.length > 0) {
-            newComments[0].childNodes[0].style.border = "1px solid Gray";
-        }
-        if (newComments.length > 1 && settings.newCommentsNav) {
-            document.querySelector(".nextC").style.display = "block";
-        }
-
-    }
-
-    function doc_keyUp(e) {
-        var activeElement = document.activeElement;
-        if (activeElement.type != 'textarea') {
-
-            if (e.code === 'KeyJ') {
-                onNext();
-            }
-
-            if (e.code === 'KeyK') {
-                onPrev();
-            }
-        }
-    }
-
-    if (settings.newCommentsNav) {
-        var prev = document.createElement('div');
-        prev.className = 'prevC';
-        prev.textContent = '⬆️';
-        prev.onclick = onPrev;
-        document.body.appendChild(prev);
-
-        var next = document.createElement('div');
-        next.className = 'nextC';
-        next.textContent = '⬇️';
-        next.onclick = onNext;
-        document.body.appendChild(next);
-
-        document.addEventListener('keyup', doc_keyUp, false);
-    }
-
-    async function getUserData(uprofile) {
-        try {
-            const url = 'https://api.orbitar.space/api/v1/user/profile';
-            const profile = new URL(uprofile);
-            const data = JSON.stringify({"username": decodeURI(profile.pathname.slice(3))});
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-type': 'application/json; charset=utf-8',
-                    'x-session-id': getCookie('session') 
-                },
-                body: data
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const jsonResponse = await response.json();            
-            return jsonResponse;
-        } catch (error) {
-            console.error('An error occurred:', error);
-        }
-    }
-
-    function detectColorTheme() {
-        try {
-            const parsedValue = JSON.parse(localStorage.getItem('theme'));
-             return parsedValue.theme;
-        } catch (e) {
-            console.error('Error parsing JSON from local storage:', e);
-        }        
-    }
-    
-    function createPopup(content) {
-        const theme = detectColorTheme();
-        const popup = document.createElement('div');
-
-        popup.innerHTML = `<div>` + content.payload.profile.username + `</div>
-            <div>Пол: ` + convertGender(content.payload.profile.gender) + `</div>
-            <div>Имя: ` + content.payload.profile.name + `</div>            
-            <div>` + invitedBy(content.payload.profile.gender) + content.payload.invitedBy.username + `</div>
-            <div>#` + content.payload.profile.id + `</div>
-            <div>` + registered(content.payload.profile.gender) + formatIsoDateString(content.payload.profile.registered) + `</div>
-            <div>Карма ` + formatWithSign(content.payload.profile.karma) + `</div>
-            <div>От меня в карме ` + formatWithSign(content.payload.profile.vote) + `</div>`;
-
-        popup.style.position = 'absolute';
-        popup.style.padding = '8px';
-        popup.style.border = '1px solid';
-        popup.style.borderRadius = '4px';
-        popup.style.zIndex = '1000';
-        popup.style.display = 'none';
-
-
-        if (theme === 'dark') {
-            popup.style.background = '#333';
-            popup.style.color = '#fff';
-            popup.style.border = '1px solid #555';
-        } else {
-            popup.style.background = '#fff';
-            popup.style.color = '#000';
-            popup.style.border = '1px solid #ddd';
-        }
-
-
-        document.body.appendChild(popup);
-
-        return popup;
-    }
-
-    function formatIsoDateString(isoString) {
-        const date = new Date(isoString);
-        let day = date.getDate().toString().padStart(2, '0');
-        let month = (date.getMonth() + 1).toString().padStart(2, '0');
-        let year = date.getFullYear();
-        return `${day}/${month}/${year}`;
-    }
-
-    function formatWithSign(number) {  
-        return (number > 0) ? `+${number}` : number.toString();
-    }
-
-    function invitedBy(genderId) {
-        return (genderId == 2) ? `Приглашена ` : `Приглашён `;
-    }
-
-function registered (genderId) {
-    return (genderId == 2) ? `Зарегистрирована ` : `Зарегистрирован `;}
-
-    function convertGender(genderId) {
-        const genderMap = {
-            1: 'мужчина',
-            2: 'женщина',
-            0: 'не указан'
+        item.onmouseout = function () {
+          clearTimeout(hoverTimeout);
         };
-
-        return genderMap[genderId] || 'не указан';
+      })(list.item(i));
     }
-    function showPopupOnHover(link, content) {
-        const popup = createPopup(content);
+  }
 
-            const rect = link.getBoundingClientRect();
-            popup.style.display = 'block';
-            popup.style.top = `${rect.bottom + window.scrollY}px`;
-            popup.style.left = `${rect.left + window.scrollX}px`;      
-        
-        link.addEventListener('mouseout', function () {
-            popup.style.display = 'none';
-        });
-        addEventListener('click', function () {
-            popup.style.display = 'none';
-        });
-    } 
-   
-    function showUserInfoPopUp() {
-        var list = document.getElementsByClassName("i-user");
-        for (var i = 0; i < list.length; i++) {           
-            (function (item) {
-                var hoverTimeout;
-                item.onmouseover = function () {
-                    var link = this;                   
-                    clearTimeout(hoverTimeout);                    
-                    hoverTimeout = setTimeout(function () {
-                        getUserData(link.href).then(function (value) {
-                            showPopupOnHover(link, value);
-                        });
-                    }, 500); 
-                };
-
-                item.onmouseout = function () {
-                    
-                    clearTimeout(hoverTimeout);
-                };
-            })(list.item(i));
-        }
+  function markPostAuthor(postAuthorUsername) {
+    var comments = document.getElementsByClassName("i-user");
+    for (var i = 0; i < comments.length; i++) {
+      var comment = comments[i];
+      var commentAuthorUsername = comment.textContent.trim();
+      if (commentAuthorUsername === postAuthorUsername) {
+        comment.classList.add("author-comment");
+      }
     }
+  }
 
-    function markPostAuthor(postAuthorUsername) {       
-        var comments = document.getElementsByClassName('i-user');
-        for (var i = 0; i < comments.length; i++) {
-            var comment = comments[i];            
-            var commentAuthorUsername = comment.textContent.trim();
-            if (commentAuthorUsername === postAuthorUsername) {                
-                comment.classList.add('author-comment');
-            }
-        }
-    }   
-
-    function processComment(commentBlock) {        
-                
-        var footer = commentBlock.querySelector('[class*="CommentComponent_controls__"]');       
-        var commentId = commentBlock.parentElement.getAttribute("data-comment-id");
-
-        var nextComment = commentBlock.nextElementSibling; 
-        function getHidingComments () {
-            let currentSettings = getSettings();
-            if (!currentSettings.hideComments) {
-                return;
-            }
-            if (currentSettings.hideComments.length === 1 && currentSettings.hideComments[0] === '') {
-                return;
-            }
-            return currentSettings.hideComments;
-        }
-               
-        if (
-            nextComment &&
-            nextComment.className.match(/CommentComponent_answers__[a-zA-Z0-9]{5}/)
-        ) {
-            
-            var collapseChildrenButton = document.createElement("a");
-            var collapseChildrenLink = document.createElement("button");
-            collapseChildrenLink.class = "stretched-link";
-            collapseChildrenLink.innerHTML = "скрыть ответы";
-            collapseChildrenLink.style.cursor = "pointer";
-            collapseChildrenButton.appendChild(collapseChildrenLink);
-            
-            footer.appendChild(collapseChildrenButton);
-            let hideComments = getHidingComments();
-            var followingComments = commentBlock.nextElementSibling;
-            if (commentId && hideComments.includes(commentId)) {
-                 followingComments.style.display = "none";
-                        collapseChildrenLink.innerHTML = "показать ответы";
-            }
-            collapseChildrenLink.addEventListener("click", function () {
-                followingComments = commentBlock.nextElementSibling;
-                while (
-                    followingComments &&
-                    followingComments.className.match(/CommentComponent_answers__[a-zA-Z0-9]{5}/)
-                ) {
-                    if (followingComments.style.display === "none") {
-                        followingComments.style.display = "";
-                        collapseChildrenLink.innerHTML = "скрыть ответы";
-
-                        let hideComments = getHidingComments();
-                       
-                        if (commentId && hideComments.includes(commentId)) {
-                            hideComments.splice(hideComments.indexOf(commentId), 1);
-                            settings.hideComments = hideComments;
-                            localStorage.setItem('BO__SETTINGS', JSON.stringify(settings));
-                        }
-                    } else {
-                        followingComments.style.display = "none";
-                        collapseChildrenLink.innerHTML = "показать ответы";
-
-                        let hideComments = getHidingComments();
-                       
-                        if (commentId && !hideComments.includes(commentId)) {
-                            hideComments.push(commentId);
-                            settings.hideComments = hideComments;
-                            localStorage.setItem('BO__SETTINGS', JSON.stringify(settings));
-                        }
-                    }
-                    followingComments = followingComments.nextElementSibling;
-                }
-            });
-        }
-    }
-function processUserNotes(profileDiv) {   
+  function processUserNotes(profileDiv) {
     let hasBeenCalled = false;
     return function () {
-        if (!hasBeenCalled) {
-        const parentProfileNode = profileDiv.querySelector('[class*=UserProfileName_profile_name__]');
+      if (!hasBeenCalled) {
+        const parentProfileNode = profileDiv.querySelector(
+          "[class*=UserProfileName_profile_name__]",
+        );
         var textarea = document.createElement("button");
-        textarea.innerHTML = "скрыть комментарии";        
-        //parentProfileNode.appendChild(textarea); 
-            console.log('Function called!');
-        hasBeenCalled = true; 
-        } else {
-            console.log('Function can only be called once.');
-        }
+        textarea.innerHTML = "скрыть комментарии";
+        //parentProfileNode.appendChild(textarea);
+        console.log("Function called!");
+        hasBeenCalled = true;
+      } else {
+        console.log("Function can only be called once.");
+      }
     };
-    
-        
-};
-    
+  }
 })();
