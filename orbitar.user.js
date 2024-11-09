@@ -449,7 +449,7 @@
           });
       }
     }
-    if (
+    /*if (
       document.location.href.match(/\/u\/[^\/]+/) &&
       !document.location.href.match(/\/u\/[^\/]+\//)
     ) {
@@ -468,13 +468,171 @@
             var textarea = document.createElement("button");
             var para = document.createElement("div");
             para.appendChild(textarea);
-            textarea.innerHTML = "Создать заметку1";
+            textarea.innerHTML = "Создать заметку";
             parentProfileNode.appendChild(para);
             parentProfileNode.dataset.userNoteProcessed = "1";
           }
         });
+    }*/
+    /*if (
+      document.location.href.match(/\/u\/[^\/]+/) &&
+      !document.location.href.match(/\/u\/[^\/]+\//)
+    ) {
+      document
+        .querySelectorAll("[class*=PostComponent_controls__]")
+        .forEach(function (el) {
+          let parentProfileNode = el.querySelector(
+            "[class*=UserProfileName_profile_name__]"
+          );
+          if (
+            !parentProfileNode ||
+            parentProfileNode.dataset.userNoteProcessed
+          ) {
+            return;
+          } else {
+            var button = document.createElement("button");
+            button.innerHTML = "Создать заметку";
+            button.className = "BO__create-note-button";
+            button.onclick = function() {
+              var textarea = document.createElement("textarea");
+              textarea.className = "BO__user-note";
+              textarea.placeholder = "Введите заметку о пользователе";
+              this.parentNode.insertBefore(textarea, this.nextSibling);
+              this.style.display = "none";
+            };
+            parentProfileNode.appendChild(button);
+            parentProfileNode.dataset.userNoteProcessed = "1";
+          }
+        });
+    }*/
+    if (
+      document.location.href.match(/\/u\/[^\/]+/) &&
+      !document.location.href.match(/\/u\/[^\/]+\//)
+    ) {
+      document
+        .querySelectorAll("[class*=UserPage_header__]")
+        .forEach(function (el) {
+          let parentProfileNode = el.querySelector(
+            "[class*=UserPage_username__]"
+          );
+          if (
+            !parentProfileNode ||
+            parentProfileNode.dataset.userNoteProcessed
+          ) {
+            return;
+          } else {
+            var username = parentProfileNode.textContent.trim();
+            //var existingNote = localStorage.getItem('BO__user_note_' + username);
+            var userNotes = loadUserNotes();
+            var existingNote = userNotes[username] || '';
+
+            var noteContainer = document.createElement("div");
+            noteContainer.className = "BO__note-container";
+
+            if (existingNote) {
+              // Display existing note
+              var noteDiv = document.createElement("div");
+              noteDiv.className = "BO__user-note-display";
+              noteDiv.textContent = existingNote;
+              noteContainer.appendChild(noteDiv);
+
+              var editButton = document.createElement("button");
+              editButton.innerHTML = "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M20.71 7.04C21.1 6.65 21.1 6 20.71 5.63L18.37 3.29C18 2.9 17.35 2.9 16.96 3.29L15.12 5.12L18.87 8.87L20.71 7.04ZM3 17.25V21H6.75L17.81 9.93L14.06 6.18L3 17.25Z\"></path></svg>";
+              editButton.className = "BO__edit-note-button";
+              noteContainer.appendChild(editButton);
+
+              editButton.onclick = function () {
+                createEditableNote();
+              };
+            } else {
+              // Create new note button
+              var createButton = document.createElement("button");
+              createButton.innerHTML = "Создать заметку";
+              createButton.className = "BO__create-note-button";
+              noteContainer.appendChild(createButton);
+
+              createButton.onclick = function () {
+                createEditableNote();
+              };
+            }
+
+            //parentProfileNode.appendChild(noteContainer);
+            parentProfileNode.insertAdjacentElement('afterend', noteContainer);
+            parentProfileNode.dataset.userNoteProcessed = "1";
+            function loadUserNotes() {
+              const notes = localStorage.getItem('BO__user_notes');
+              return notes ? JSON.parse(notes) : {};
+            }
+
+            // Function to save all user notes to localStorage
+            function saveUserNotes(notes) {
+              localStorage.setItem('BO__user_notes', JSON.stringify(notes));
+            }
+            function createEditableNote() {
+              var userNotes = loadUserNotes();
+              var existingNote = userNotes[username] || '';
+
+              noteContainer.innerHTML = '';
+              var textarea = document.createElement("textarea");
+              textarea.className = "BO__user-note";
+              textarea.placeholder = "Введите заметку о пользователе";
+              textarea.value = existingNote;
+
+              var saveButton = document.createElement("button");
+              saveButton.innerHTML = "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M2,21L23,12L2,3V10L17,12L2,14V21Z\"></path></svg>";
+              saveButton.className = "BO__save-note-button";
+
+              noteContainer.appendChild(textarea);
+              noteContainer.appendChild(saveButton);
+
+              saveButton.onclick = function () {
+                var note = textarea.value.trim();
+                var userNotes = loadUserNotes();
+
+                if (note === '') {
+                  // If note is empty, remove it from the notes object
+                  delete userNotes[username];
+                  noteContainer.innerHTML = ''; // Clear editable elements
+
+                  // Add back the "Create note" button
+                  var createButton = document.createElement("button");
+                  createButton.innerHTML = "Создать заметку";
+                  createButton.className = "BO__create-note-button";
+                  noteContainer.appendChild(createButton);
+
+                  createButton.onclick = function () {
+                    createEditableNote();
+                  };
+                } else {
+                  // Save the note for this username
+                  userNotes[username] = note;
+                  noteContainer.innerHTML = ''; // Clear editable elements
+
+                  var noteDiv = document.createElement("div");
+                  noteDiv.className = "BO__user-note-display";
+                  noteDiv.textContent = note;
+                  noteContainer.appendChild(noteDiv);
+
+                  var editButton = document.createElement("button");
+                  editButton.innerHTML = "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M20.71 7.04C21.1 6.65 21.1 6 20.71 5.63L18.37 3.29C18 2.9 17.35 2.9 16.96 3.29L15.12 5.12L18.87 8.87L20.71 7.04ZM3 17.25V21H6.75L17.81 9.93L14.06 6.18L3 17.25Z\"></path></svg>";
+                  editButton.className = "BO__edit-note-button";
+                  noteContainer.appendChild(editButton);
+
+                  editButton.onclick = function () {
+                    createEditableNote();
+                  };
+                }
+
+                // Save all notes back to localStorage
+                saveUserNotes(userNotes);
+              };
+            }
+          }
+        });
     }
   };
+
+
 
   const targetNode = document.getElementsByTagName("html")[0];
   const config = { attributes: false, childList: true, subtree: true };
@@ -1244,6 +1402,42 @@
         	text-decoration: none;
         	opacity: 1;
         }
+      .BO__note-container button {
+        background: none;
+        margin: 0;
+        padding: 0;
+        border: none;
+        display: flex;
+        align-items: center;
+        font-size: 13px;
+        fill: rgba(255, 255, 255, 0.4);
+        color: rgba(255, 255, 255, 0.4);
+        text-decoration: none;
+        font-weight: normal;
+        &.active {
+            color: #68B1C1;
+            fill: #68B1C1;
+            font-weight: normal;
+        }
+        &:hover {
+            color: #68B1C1;
+        }
+    }
+        .BO__user-note {
+        background: none;
+        margin:0;
+        padding: 0;
+        border: 1px solid;
+        display: flex;
+        align-items: center;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.4);
+        text-decoration: none;
+        width: 400px;
+        height: 70px;
+        font-weight: normal;
+        }
+
 
         .nextC {
             width: 40px;
