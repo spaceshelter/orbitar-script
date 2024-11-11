@@ -1418,40 +1418,40 @@
         }
         `;
   const userNotesCss = `
-.BO__note - container button {
+.BO__note-container button {
       background: none;
   margin: 0;
   padding: 0;
   border: none;
   display: flex;
-  align - items: center;
-  font - size: 13px;
+  align-items: center;
+  font-size: 13px;
   fill: var(--fgSoftest);
   color: var(--fgSoftest);
-  text - decoration: none;
-  font - weight: normal;
+  text-decoration: none;
+  font-weight: normal;
         &.active {
     color: var(--fgSoftest);
     fill: var(--fgSoftest);
-    font - weight: normal;
+    font-weight: normal;
   }
         &:hover {
     color: var(--fgSoftest);
   }
 }
-  .BO__user - note {
+  .BO__user-note {
   background: none;
   margin: 0;
   padding: 0;
   border: 1px solid;
   display: flex;
-  align - items: center;
-  font - size: 13px;
+  align-items: center;
+  font-size: 13px;
   color: var(--fgSoftest);
-  text - decoration: none;
+  text-decoration: none;
   width: 400px;
   height: 70px;
-  font - weight: normal;
+  font-weight: normal;
 }`;
 
   const css =
