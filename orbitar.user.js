@@ -220,7 +220,7 @@
           hideAuthorEl.innerHTML = "×";
           hideAuthorEl.title = "игнорировать " + postAuthor;
           hideAuthorEl.dataset.postAuthor = postAuthor;
-          signatureAuthorLink.insertAdjacentElement("afterend", hideAuthorEl);
+          signatureAuthorLink.insertAdjacentElement("afterend", hideAuthorEl);          
         }
 
         if (
@@ -259,7 +259,7 @@
         el.dataset.boProcessed = "1";
       });
 
-    if (document.location.href.match(/space\/(s\/[a-z0-9_-]+?\/)?p\d+/)) {
+    if (document.location.href.match(/space\/(s\/[a-z0-9_-]+?\/)?p\d+/)) {      
       if (!currentPostAuthor) {
         let currentPost = document.querySelector(
           '[class*=PostComponent_post__] [class*="SignatureComponent_signature__"] a',
@@ -449,62 +449,7 @@
           });
       }
     }
-    /*if (
-      document.location.href.match(/\/u\/[^\/]+/) &&
-      !document.location.href.match(/\/u\/[^\/]+\//)
-    ) {
-      document
-        .querySelectorAll("[class*=PostComponent_controls__]")
-        .forEach(function (el) {
-          let parentProfileNode = el.querySelector(
-            "[class*=UserProfileName_profile_name__]",
-          );
-          if (
-            !parentProfileNode ||
-            parentProfileNode.dataset.userNoteProcessed
-          ) {
-            return;
-          } else {
-            var textarea = document.createElement("button");
-            var para = document.createElement("div");
-            para.appendChild(textarea);
-            textarea.innerHTML = "Создать заметку";
-            parentProfileNode.appendChild(para);
-            parentProfileNode.dataset.userNoteProcessed = "1";
-          }
-        });
-    }*/
-    /*if (
-      document.location.href.match(/\/u\/[^\/]+/) &&
-      !document.location.href.match(/\/u\/[^\/]+\//)
-    ) {
-      document
-        .querySelectorAll("[class*=PostComponent_controls__]")
-        .forEach(function (el) {
-          let parentProfileNode = el.querySelector(
-            "[class*=UserProfileName_profile_name__]"
-          );
-          if (
-            !parentProfileNode ||
-            parentProfileNode.dataset.userNoteProcessed
-          ) {
-            return;
-          } else {
-            var button = document.createElement("button");
-            button.innerHTML = "Создать заметку";
-            button.className = "BO__create-note-button";
-            button.onclick = function() {
-              var textarea = document.createElement("textarea");
-              textarea.className = "BO__user-note";
-              textarea.placeholder = "Введите заметку о пользователе";
-              this.parentNode.insertBefore(textarea, this.nextSibling);
-              this.style.display = "none";
-            };
-            parentProfileNode.appendChild(button);
-            parentProfileNode.dataset.userNoteProcessed = "1";
-          }
-        });
-    }*/
+
     if (
       document.location.href.match(/\/u\/[^\/]+/) &&
       !document.location.href.match(/\/u\/[^\/]+\//)
@@ -522,7 +467,6 @@
             return;
           } else {
             var username = parentProfileNode.textContent.trim();
-            //var existingNote = localStorage.getItem('BO__user_note_' + username);
             var userNotes = loadUserNotes();
             var existingNote = userNotes[username] || '';
 
@@ -556,18 +500,19 @@
               };
             }
 
-            //parentProfileNode.appendChild(noteContainer);
             parentProfileNode.insertAdjacentElement('afterend', noteContainer);
             parentProfileNode.dataset.userNoteProcessed = "1";
+           
             function loadUserNotes() {
-              const notes = localStorage.getItem('BO__user_notes');
-              return notes ? JSON.parse(notes) : {};
+              const settings = JSON.parse(localStorage.getItem('BO__SETTINGS') || '{}');
+              return settings.userNotes || {};
             }
 
-            // Function to save all user notes to localStorage
             function saveUserNotes(notes) {
-              localStorage.setItem('BO__user_notes', JSON.stringify(notes));
-            }
+              const settings = JSON.parse(localStorage.getItem('BO__SETTINGS') || '{}');
+              settings.userNotes = notes;
+              localStorage.setItem('BO__SETTINGS', JSON.stringify(settings));
+}
             function createEditableNote() {
               var userNotes = loadUserNotes();
               var existingNote = userNotes[username] || '';
@@ -756,6 +701,18 @@
       markPostAuthor: document.querySelector(
         '[data-setting-name="markPostAuthor"]',
       ).checked,
+      markPostAuthorBold: document.querySelector(
+        '[data-setting-name="markPostAuthorBold"]',
+      ).checked,
+      markPostAuthorItalic: document.querySelector(
+        '[data-setting-name="markPostAuthorItalic"]',
+      ).checked,
+      markPostAuthorUnder: document.querySelector(
+        '[data-setting-name="markPostAuthorUnder"]',
+      ).checked,
+      markPostAuthorReddit: document.querySelector(
+        '[data-setting-name="markPostAuthorReddit"]',
+      ).checked,
       addVocativeToComments: document.querySelector(
         '[data-setting-name="addVocativeToComments"]',
       ).checked,
@@ -899,8 +856,19 @@
               </div>
                 <div>
                   <label><input type="checkbox" data-setting-name="markPostAuthor" ` +
-        (settings.markPostAuthor ? 'checked="1"' : "") +
-        ` /> - выделять юзернейм автора поста в комментах</label>
+      (settings.markPostAuthor ? 'checked="1"' : "") +
+      ` /> - выделять юзернейм автора поста в комментах: <ul style="list-style: none;"><li><input type="checkbox" data-setting-name="markPostAuthorBold" ` +
+      (settings.markPostAuthorBold ? 'checked="1"' : "") +
+      ` /> <b>жирным</b></li>
+      <li><input type="checkbox" data-setting-name="markPostAuthorItalic" ` +
+      (settings.markPostAuthorItalic ? 'checked="1"' : "") +
+      ` /> <i>курсивом</i></li>
+      <li><input type="checkbox" data-setting-name="markPostAuthorUnder" ` +
+      (settings.markPostAuthorUnder ? 'checked="1"' : "") +
+        ` /> <u>подчеркиванием</u></li>
+      <li><input type="checkbox" data-setting-name="markPostAuthorReddit" ` +
+      (settings.markPostAuthorReddit ? 'checked="1"' : "") +
+        ` /> reddit-style</li></ul></label>
               </div>
           </div>
           </div>
@@ -1014,7 +982,7 @@
   });
 
   live("click", ".BO__settings button.export", function (e) {
-    var boSettings = localStorage.getItem("BO__SETTINGS");
+    var boSettings = localStorage.getItem("BO__SETTINGS");      
 
     if (boSettings) {
       var blob = new Blob([boSettings], { type: "text/csv" });
@@ -1401,43 +1369,7 @@
         .prevC:hover {
         	text-decoration: none;
         	opacity: 1;
-        }
-      .BO__note-container button {
-        background: none;
-        margin: 0;
-        padding: 0;
-        border: none;
-        display: flex;
-        align-items: center;
-        font-size: 13px;
-        fill: rgba(255, 255, 255, 0.4);
-        color: rgba(255, 255, 255, 0.4);
-        text-decoration: none;
-        font-weight: normal;
-        &.active {
-            color: #68B1C1;
-            fill: #68B1C1;
-            font-weight: normal;
-        }
-        &:hover {
-            color: #68B1C1;
-        }
-    }
-        .BO__user-note {
-        background: none;
-        margin:0;
-        padding: 0;
-        border: 1px solid;
-        display: flex;
-        align-items: center;
-        font-size: 13px;
-        color: rgba(255, 255, 255, 0.4);
-        text-decoration: none;
-        width: 400px;
-        height: 70px;
-        font-weight: normal;
-        }
-
+        }  
 
         .nextC {
             width: 40px;
@@ -1477,14 +1409,57 @@
 
   const postAuthorCss = `
         .author-comment {
-        font-weight: bold !important;
+` +
+    (settings.markPostAuthorBold ? "font-weight: bold !important;" : "") +
+    (settings.markPostAuthorItalic ? "font-style: italic !important;" : "") +
+    (settings.markPostAuthorUnder ? "text-decoration: underline !important;" : "") +
+    `
+        
         }
         `;
+  const userNotesCss = `
+.BO__note - container button {
+      background: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  align - items: center;
+  font - size: 13px;
+  fill: var(--fgSoftest);
+  color: var(--fgSoftest);
+  text - decoration: none;
+  font - weight: normal;
+        &.active {
+    color: var(--fgSoftest);
+    fill: var(--fgSoftest);
+    font - weight: normal;
+  }
+        &:hover {
+    color: var(--fgSoftest);
+  }
+}
+  .BO__user - note {
+  background: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid;
+  display: flex;
+  align - items: center;
+  font - size: 13px;
+  color: var(--fgSoftest);
+  text - decoration: none;
+  width: 400px;
+  height: 70px;
+  font - weight: normal;
+}`;
 
   const css =
     hiddenCss +
     "\n" +
     settingsCss +
+    "\n" +
+    userNotesCss +
     "\n" +
     (settings.changeLayout ? layoutChangeCss : "") +
     "\n" +
@@ -1807,31 +1782,22 @@
   }
 
   function markPostAuthor(postAuthorUsername) {
-    var comments = document.getElementsByClassName("i-user");
+    var comments = document.querySelectorAll("a.i-user");
     for (var i = 0; i < comments.length; i++) {
       var comment = comments[i];
       var commentAuthorUsername = comment.textContent.trim();
-      if (commentAuthorUsername === postAuthorUsername) {
+      if (commentAuthorUsername === postAuthorUsername && !comment.dataset.boProcessed) {
         comment.classList.add("author-comment");
+        if (settings.markPostAuthorReddit){
+        var opSuperscript = document.createElement("sup");
+        opSuperscript.textContent = "АП";
+        opSuperscript.style.fontSize = "0.9em";
+        opSuperscript.style.fontWeight = "bold";
+        opSuperscript.style.color = "#68B1C1";
+        comment.insertAdjacentElement("afterend", opSuperscript);
+        }
+        comment.dataset.boProcessed = "1";        
       }
-    }
-  }
-
-  function processUserNotes(profileDiv) {
-    let hasBeenCalled = false;
-    return function () {
-      if (!hasBeenCalled) {
-        const parentProfileNode = profileDiv.querySelector(
-          "[class*=UserProfileName_profile_name__]",
-        );
-        var textarea = document.createElement("button");
-        textarea.innerHTML = "скрыть комментарии";
-        //parentProfileNode.appendChild(textarea);
-        console.log("Function called!");
-        hasBeenCalled = true;
-      } else {
-        console.log("Function can only be called once.");
-      }
-    };
-  }
+    }       
+  }  
 })();
