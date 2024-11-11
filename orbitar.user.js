@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Orbitar temporary tweaks
 // @namespace    http://tampermonkey.net/
-// @version      1.5.4
+// @version      1.6.1
 // @description  Slightly modify orbitar.space UI
 // @author       pazoozoo42 & LazyKarlson
 // @match        https://*.orbitar.space/*
