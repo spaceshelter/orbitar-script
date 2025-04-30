@@ -1651,17 +1651,8 @@
     }
   }
 
-  function detectColorTheme() {
-    try {
-      const parsedValue = JSON.parse(localStorage.getItem("theme"));
-      return parsedValue.theme;
-    } catch (e) {
-      console.error("Error parsing JSON from local storage:", e);
-    }
-  }
-
   function createPopup(content) {
-    const theme = detectColorTheme();
+    const theme = localStorage.getItem("theme");
     const popup = document.createElement("div");
 
     popup.innerHTML =
