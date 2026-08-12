@@ -953,7 +953,7 @@
             hideUsernames = [];
         }
         const username = e.target.dataset.postAuthor;
-        if (username && !hidePosts.includes(username)) {
+        if (username && !hideUsernames.includes(username)) {
             hideUsernames.push(username);
             settings.hide = hideUsernames;
             localStorage.setItem("BO__SETTINGS", JSON.stringify(settings));
